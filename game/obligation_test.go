@@ -218,3 +218,97 @@ func TestPerformedObligationsReachThePlayer(t *testing.T) {
 		t.Errorf("no Obligation was ever announced to the player over a full Day (%d log lines)", len(log))
 	}
 }
+
+func TestTownHasPrivateActions(t *testing.T) {
+	game := newTestGame(t)
+	private, groupSecrets := 0, 0
+	for _, obligation := range allObligations(game) {
+		if !obligation.Private {
+			continue
+		}
+		private++
+		if len(obligation.Witnesses) > 0 {
+			groupSecrets++
+		}
+	}
+	if private == 0 {
+		t.Error("no Private Actions, so there is nothing worth catching anyone at")
+	}
+	if groupSecrets == 0 {
+		t.Error("no secret is shared between two Townspeople")
+	}
+}
+
+func TestAWhitelistedWitnessMayWatch(t *testing.T) {
+	game := newTestGame(t)
+	for _, obligation := range allObligations(game) {
+		if !obligation.Private || len(obligation.Witnesses) == 0 {
+			continue
+		}
+		if !obligation.MayWitness(obligation.Witnesses[0]) {
+			t.Errorf("%s excludes %s, who is on its own whitelist", obligation.ID, obligation.Witnesses[0])
+		}
+		if !obligation.MayWitness(obligation.Owner) {
+			t.Errorf("%s excludes its own owner", obligation.ID)
+		}
+		if obligation.MayWitness("someone_else") {
+			t.Errorf("%s admits a stranger", obligation.ID)
+		}
+		return
+	}
+	t.Skip("no group secret to check")
+}
+
+func TestThePlayerIsOnNobodysWhitelist(t *testing.T) {
+	// The vampire is never a permitted witness, which is what makes observing a
+	// secret require being hidden rather than merely being nearby.
+	game := newTestGame(t)
+	for _, obligation := range allObligations(game) {
+		if obligation.Private && obligation.MayWitness("") {
+			t.Errorf("%s would let the vampire watch openly", obligation.ID)
+		}
+	}
+}
+
+func TestBeingSeenBreaksOffAPrivateAction(t *testing.T) {
+	// Standing in view of a secret should stop it happening, not reveal it.
+	game := newTestGame(t)
+	clock := game.GetWorldState().GetClock()
+
+	var secret *common.Obligation
+	for _, obligation := range allObligations(game) {
+		if obligation.Private {
+			secret = obligation
+			break
+		}
+	}
+	if secret == nil {
+		t.Skip("no Private Action authored")
+	}
+
+	// Stand right on top of it for the whole window.
+	game.GetWorldState().GetPlayer().SetMapPosition(secret.At)
+	for int(clock.SecondsSinceMidnight()) < secret.StartSecond {
+		game.Advance(1.0)
+		game.GetWorldState().GetPlayer().SetMapPosition(secret.At)
+	}
+	watched := false
+	for secret.Covers(clock.SecondsSinceMidnight()) && game.Ending() == RunOngoing {
+		game.Advance(1.0)
+		game.GetWorldState().GetPlayer().SetMapPosition(secret.At)
+		for _, actor := range townspeople(game) {
+			if actor.GetInternalName() != secret.Owner {
+				continue
+			}
+			entry, ok := actor.GetTownsperson().Schedule().EntryAt(clock.SecondsSinceMidnight())
+			if ok && entry.IsObligation() && entry.Obligation.ID == secret.ID {
+				if _, seen := game.privateActionIsWatched(actor, entry); seen {
+					watched = true
+				}
+			}
+		}
+	}
+	if !watched {
+		t.Error("standing on a secret never registered as watching it")
+	}
+}

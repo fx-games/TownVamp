@@ -3,12 +3,12 @@ package game
 import (
 	"fmt"
 	"path"
-	"sort"
 	"rpg/common"
 	"rpg/defs"
 	"rpg/files"
 	"rpg/geometry"
 	"rpg/util"
+	"sort"
 )
 
 // populateTown gives the town its inhabitants. Townspeople already placed on the
@@ -64,6 +64,7 @@ func (g *GameInstance) populateTown() {
 	})
 
 	obligations := g.loadObligations(people, namedLocation)
+	g.loadZones()
 	g.checkSchedulesAreWalkable()
 	println(fmt.Sprintf("Loaded %d townspeople owing %d obligations", len(people), len(obligations)))
 }

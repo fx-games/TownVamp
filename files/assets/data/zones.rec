@@ -1,0 +1,46 @@
+%rec: default
+#FIELDS: name type rect belongs_to
+#
+# Zones divide the town into places the vampire is free to be and places he is
+# not. A Zone's permitted occupants are the same predicate as a Private Action's
+# Witness Whitelist — may this person be here, seeing this? — asked of a place
+# rather than an act.
+#
+#   type       public or private
+#   rect       x,y,width,height
+#   belongs_to internal names of the Townspeople who live or work here. Anyone
+#              else seen inside is trespassing.
+#
+# The town map itself marks no interiors, so these are authored here rather than
+# on the map. When the LDtk map gains zone layers this file should go away.
+
+name: Shekel's house
+type: private
+rect: 10,7,5,4
+belongs_to: shekel
+
+name: Abel's house
+type: private
+rect: 10,14,5,3
+belongs_to: abel
+
+name: The elder's hall
+type: private
+rect: 17,16,5,3
+belongs_to: kirioth
+
+name: The chapel
+type: private
+rect: 31,17,5,3
+belongs_to: mary
+belongs_to: abel
+
+name: Hanno's holding
+type: private
+rect: 38,11,5,4
+belongs_to: hanno
+
+name: The forge
+type: private
+rect: 16,4,6,4
+belongs_to: greta

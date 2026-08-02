@@ -76,3 +76,36 @@ at: 12,9
 window: 05:00-06:00
 performed: draws the bar off the gate before anyone is about
 absent: The gate stays barred and a queue builds against it
+
+# Private Actions. These are only carried out when nobody outside the whitelist
+# can see. A group secret is a whitelist with more than one name on it — watching
+# who is permitted to be present is itself informative.
+
+id: the_second_ledger
+owner: shekel
+role: trader
+at: 12,9
+window: 21:00-22:00
+private: true
+performed: unshutters a lamp and copies figures from one book into another
+absent: Nobody reconciles the tolls, and the counts drift apart
+
+id: the_debt_collection
+owner: abel
+towards: greta
+at: 20,6
+window: 21:00-23:00
+private: true
+witness: greta
+performed: speaks with Greta at the forge door, neither of them looking up
+absent: A debt goes unspoken of, and neither party will raise it
+
+id: what_burned_the_mill
+owner: greta
+towards: mary
+at: 33,18
+window: 23:00-01:00
+private: true
+witness: mary
+performed: waits at the chapel until the lamps are out, then goes inside
+absent: Something that happened stays unsaid, and the wrong man keeps the blame

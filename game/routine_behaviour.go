@@ -14,6 +14,9 @@ import (
 // record file, not writing code — which is the property Obligations and
 // Reassignment will depend on in later tickets.
 func (g *GameInstance) getScheduledAction(actor *common.Actor) (int, func()) {
+	if g.isHunter(actor) {
+		return g.getHunterAction(actor)
+	}
 	person := actor.GetTownsperson()
 	if person == nil {
 		return 0, nil // the player, and anyone else without a Routine
@@ -30,6 +33,9 @@ func (g *GameInstance) getScheduledAction(actor *common.Actor) (int, func()) {
 	}
 
 	if g.hasArrivedAt(actor, slot.At) {
+		if intruder, watched := g.privateActionIsWatched(actor, slot); watched {
+			return g.seekPrivacy(actor, slot, intruder, stepCost)
+		}
 		g.noteObligationPerformed(actor, slot)
 		return waitOneStep(stepCost)
 	}
@@ -138,4 +144,107 @@ func (g *GameInstance) showUnmetObligations() {
 	for _, obligation := range g.unmetObligations {
 		g.PlayerMessage(obligation.Absent + ".")
 	}
+}
+
+// privateActionIsWatched asks whether anyone outside the Witness Whitelist can
+// currently see this act. It is checked while the act is in progress, not only
+// when it starts, so someone wandering in halfway breaks it off too.
+func (g *GameInstance) privateActionIsWatched(actor *common.Actor, entry common.ScheduleEntry) (*common.Actor, bool) {
+	if !entry.IsObligation() || !entry.Obligation.Private {
+		return nil, false
+	}
+	for _, watcher := range g.whoCanSee(actor.MapPosition(), actor) {
+		name := watcher.GetInternalName()
+		if watcher == g.state.GetPlayer() {
+			name = "" // the vampire is on nobody's whitelist
+		}
+		if !entry.Obligation.MayWitness(name) {
+			return watcher, true
+		}
+	}
+	return nil, false
+}
+
+// seekPrivacy is what a Townsperson does when they notice the wrong person can
+// see them: refrain, and move somewhere unobserved if such a place is reachable.
+// The duty is postponed, not abandoned — they will try again while the hour lasts.
+func (g *GameInstance) seekPrivacy(actor *common.Actor, entry common.ScheduleEntry, intruder *common.Actor, stepCost int) (int, func()) {
+	if g.state.GetPlayer().CanSee(actor.MapPosition()) {
+		g.noteInterrupted(actor, entry)
+	}
+
+	refuge, found := g.findUnobservedTileNear(actor, entry)
+	if !found {
+		return waitOneStep(stepCost) // nowhere to go; simply do not do it
+	}
+	next, reachable := g.nextStepTowards(actor, refuge)
+	if !reachable {
+		return waitOneStep(stepCost)
+	}
+	return stepCost, func() {
+		g.actionBroker.Execute(common.NewMoveAction(common.AbstractCause("SeekPrivacy"), actor, next, false))
+	}
+}
+
+// findUnobservedTileNear looks for somewhere close by that nobody outside the
+// whitelist can see into.
+func (g *GameInstance) findUnobservedTileNear(actor *common.Actor, entry common.ScheduleEntry) (geometry.Point, bool) {
+	currentMap := g.state.GetMap()
+	here := actor.MapPosition()
+
+	for radius := 1; radius <= 4; radius++ {
+		for _, candidate := range ringAround(here, radius) {
+			if !currentMap.Contains(candidate) || !currentMap.IsWalkable(candidate) || currentMap.IsActorAt(candidate) {
+				continue
+			}
+			seen := false
+			for _, watcher := range g.whoCanSee(candidate, actor) {
+				name := watcher.GetInternalName()
+				if watcher == g.state.GetPlayer() {
+					name = ""
+				}
+				if !entry.Obligation.MayWitness(name) {
+					seen = true
+					break
+				}
+			}
+			if !seen {
+				return candidate, true
+			}
+		}
+	}
+	return geometry.Point{}, false
+}
+
+// noteInterrupted tells the player what they just cost someone. It is the only
+// signal that a secret exists at all — the engine records nothing about it.
+func (g *GameInstance) noteInterrupted(actor *common.Actor, entry common.ScheduleEntry) {
+	key := "interrupted:" + actor.GetInternalName() + ":" + entry.Obligation.ID
+	if g.announcedToday[key] {
+		return
+	}
+	g.announcedToday[key] = true
+	g.PlayerMessage(fmt.Sprintf("%s stops, glances about, and moves away.", actor.Name()))
+}
+
+// ringAround lists the tiles exactly `radius` steps away, so the search for
+// somewhere unobserved works outwards from where the Townsperson stands.
+func ringAround(centre geometry.Point, radius int) []geometry.Point {
+	var ring []geometry.Point
+	for dx := -radius; dx <= radius; dx++ {
+		for dy := -radius; dy <= radius; dy++ {
+			if max(abs(dx), abs(dy)) != radius {
+				continue
+			}
+			ring = append(ring, geometry.Point{X: centre.X + dx, Y: centre.Y + dy})
+		}
+	}
+	return ring
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
 }

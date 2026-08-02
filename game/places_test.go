@@ -43,6 +43,19 @@ func TestProbeARunWithAKilling(t *testing.T) {
 	}
 	report("three days later")
 
+	if game.Ending() == RunOngoing {
+		game.LeaveTown()
+	}
+	var e strings.Builder
+	e.WriteString("\n--- epilogue ---")
+	for _, slide := range game.Epilogue() {
+		e.WriteString("\n\n  == " + slide.Title + " ==")
+		for _, line := range slide.Lines {
+			e.WriteString("\n  " + line)
+		}
+	}
+	t.Log(e.String())
+
 	var b strings.Builder
 	b.WriteString("\n--- the town now ---")
 	for _, person := range game.townspeople {

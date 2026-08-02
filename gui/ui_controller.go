@@ -1251,6 +1251,7 @@ func (u *UIController) showHelpText() {
 		"'.' to wait until dawn, ',' to wait until dusk.",
 		"'e' to drain someone standing next to you.",
 		"'h' to hide a body you are standing over.",
+		"'end' to leave the town for good, whenever you choose.",
 		"'x' to centre the view on yourself.",
 		"'l' to show the last lines of the message log.",
 		"'c' to show your stats.",

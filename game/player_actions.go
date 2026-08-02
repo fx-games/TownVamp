@@ -68,15 +68,15 @@ type PlayerActionsContext struct {
 
 func NewActions(context PlayerActionsContext) *Actions {
 	return &Actions{
-		player:        context.Player,
-		actionBroker:  context.ActionBroker,
-		state:         context.State,
-		ui:            context.UI,
-		actorSpeak:    context.Speak,
-		animator:      context.Animator,
-		getTimeKeeper: context.GetTimeKeeper,
-		logError:      context.Msg,
-		config:        context.Configuration,
+		player:         context.Player,
+		actionBroker:   context.ActionBroker,
+		state:          context.State,
+		ui:             context.UI,
+		actorSpeak:     context.Speak,
+		animator:       context.Animator,
+		getTimeKeeper:  context.GetTimeKeeper,
+		logError:       context.Msg,
+		config:         context.Configuration,
 		queueAfterTurn: context.QueueAfterTurn,
 	}
 }
@@ -400,13 +400,13 @@ func (a *Actions) RestUntilHealed() {
 		return
 	}
 	/*
-	hpRegenRate := state.GetPlayer().GetStats().GetAttributeAsFloat(stats.HealthRegeneration)
-	if hpRegenRate <= 0 {
-		a.isResting = false
-		a.logError("You won't heal through resting")
-		return
-	}
-	 */
+		hpRegenRate := state.GetPlayer().GetStats().GetAttributeAsFloat(stats.HealthRegeneration)
+		if hpRegenRate <= 0 {
+			a.isResting = false
+			a.logError("You won't heal through resting")
+			return
+		}
+	*/
 	healthResource := state.GetPlayer().GetStats().GetResource(stats.Health)
 	if healthResource.IsAtMax() {
 		a.isResting = false
@@ -449,4 +449,3 @@ func (a *Actions) updateFoV() {
 func (a *Actions) IsPlayerAutoMoving() bool {
 	return len(a.playerPath) > 0
 }
-

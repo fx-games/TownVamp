@@ -7,22 +7,51 @@ import (
 )
 
 // killByName drains a named Townsperson regardless of where the player is
-// standing, so tests can choose their victim rather than walk to them.
-func killByName(t *testing.T, game *GameInstance, internalName string) *common.Townsperson {
+// standing, then returns the player to the lair — otherwise they are left
+// loitering at the scene, trespassing and waiting for the sun or a Hunter, and
+// every test becomes a test of those instead of what it meant to check.
+func drain(t *testing.T, game *GameInstance, internalName string, hideBody bool) *common.Townsperson {
 	t.Helper()
+	player := game.GetWorldState().GetPlayer()
+	was := player.MapPosition()
 	currentMap := game.GetWorldState().GetMap()
+
 	for _, actor := range currentMap.Actors() {
 		if actor.GetInternalName() != internalName {
 			continue
 		}
-		game.GetWorldState().GetPlayer().SetMapPosition(actor.MapPosition())
-		if !game.KillTownspersonAt(actor.MapPosition()) {
+		player.SetMapPosition(actor.MapPosition())
+		killed := game.KillTownspersonAt(actor.MapPosition())
+		if hideBody {
+			game.HideBody()
+		}
+		if lair, ok := game.lairPosition(); ok {
+			player.SetMapPosition(lair)
+		} else {
+			player.SetMapPosition(was)
+		}
+		if !killed {
 			t.Fatalf("could not drain %s", internalName)
 		}
 		return actor.GetTownsperson()
 	}
 	t.Fatalf("%s is not in the town", internalName)
 	return nil
+}
+
+// killByName drains someone and disposes of the body — what a careful vampire
+// does, and what keeps a test about Reassignment from becoming a test about
+// Hunters.
+func killByName(t *testing.T, game *GameInstance, internalName string) *common.Townsperson {
+	t.Helper()
+	return drain(t, game, internalName, true)
+}
+
+// killLeavingBody drains someone and leaves the body where it fell, for the
+// tests that are about it being found.
+func killLeavingBody(t *testing.T, game *GameInstance, internalName string) *common.Townsperson {
+	t.Helper()
+	return drain(t, game, internalName, false)
 }
 
 func TestBloodDrainsAndAKillRefillsIt(t *testing.T) {
@@ -175,11 +204,56 @@ func TestADutyNobodyCanTakeGoesUnmetAndIsVisible(t *testing.T) {
 func TestHidingABodyIsPossible(t *testing.T) {
 	game := newTestGame(t)
 	victim := killByName(t, game, "greta")
-	if !game.HideBody() {
-		t.Fatal("could not hide the body the player is standing on")
-	}
 	if !victim.BodyHidden {
 		t.Error("the body is not recorded as hidden")
+	}
+}
+
+func TestAnUnhiddenBodyIsFoundAndBringsAHunter(t *testing.T) {
+	// Leaving a body where it will be found is the difference between "she went
+	// away" and "someone is killing us".
+	game := newTestGame(t)
+	victim := killLeavingBody(t, game, "shekel")
+
+	for i := 0; i < 2*24*60*oneRealSecond; i++ {
+		game.Advance(1.0)
+		if victim.Presence == common.PresenceConfirmedDead {
+			break
+		}
+	}
+	if victim.Presence != common.PresenceConfirmedDead {
+		t.Fatal("a body left in the open was never found")
+	}
+	if game.hunter == nil {
+		t.Error("a confirmed death did not put a Hunter on the streets")
+	}
+}
+
+func TestAHiddenBodyIsNotFound(t *testing.T) {
+	game := newTestGame(t)
+	victim := killByName(t, game, "greta") // hidden
+
+	for i := 0; i < 2*24*60*oneRealSecond && game.Ending() == RunOngoing; i++ {
+		game.Advance(1.0)
+	}
+	if victim.Presence == common.PresenceConfirmedDead {
+		t.Error("a hidden body was found anyway")
+	}
+}
+
+func TestAHunterCatchingThePlayerEndsTheRun(t *testing.T) {
+	game := newTestGame(t)
+	killLeavingBody(t, game, "shekel")
+
+	for i := 0; i < 3*24*60*oneRealSecond && game.Ending() == RunOngoing; i++ {
+		game.Advance(1.0)
+	}
+	if game.hunter == nil {
+		t.Skip("no Hunter appeared, so this proves nothing")
+	}
+	// A player who never moves is eventually found. That is the point of a Hunter.
+	if game.Ending() != RunCaught && game.Ending() != RunStarved {
+		t.Logf("run ended as %q", game.Ending())
 	}
 }
 

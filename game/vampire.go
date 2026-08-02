@@ -14,6 +14,7 @@ const (
 	RunLeftTown RunEnding = "left town"
 	RunStarved  RunEnding = "starved"
 	RunBurned   RunEnding = "caught by the sun"
+	RunCaught   RunEnding = "caught by a hunter"
 )
 
 // KillTownspersonAt drains whoever is standing next to the given tile. The victim
@@ -166,11 +167,14 @@ func (g *GameInstance) endRun(ending RunEnding) {
 		return
 	}
 	g.ending = ending
+	defer g.ShowEpilogue()
 	switch ending {
 	case RunStarved:
 		g.PlayerMessage("The hunger takes you. You are done.")
 	case RunBurned:
 		g.PlayerMessage("Dawn finds you in the open. You burn.")
+	case RunCaught:
+		g.PlayerMessage("A hand closes on your shoulder. They knew what you were.")
 	case RunLeftTown:
 		g.PlayerMessage("You leave the town behind.")
 	}

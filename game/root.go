@@ -81,6 +81,9 @@ type GameInstance struct {
 	bodies          map[string]geometry.Point
 	ending          RunEnding
 	warnedAboutDawn bool
+	zones           []*TownZone
+	hunter          *common.Actor
+	withdrawn       map[string]bool
 
 	logHook     func(string)
 	logBuffer   []string
@@ -266,6 +269,8 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	g.blood = common.NewBlood()
 	g.townspeople = nil
 	g.bodies = make(map[string]geometry.Point)
+	g.withdrawn = make(map[string]bool)
+	g.hunter = nil
 	g.ending = RunOngoing
 	g.state.SetRandomSource(g.randomSource)
 	g.state.SetTimeMultiplier(g.configuration.TimeMultiplier)
@@ -412,7 +417,7 @@ func (g *GameInstance) handleLightSource() {
 // in-game second at the default Time Multiplier, making a Day twenty-four
 // minutes of real time.
 func (g *GameInstance) Advance(inGameSeconds float64) {
-	if g.isPaused {
+	if g.isPaused || g.ending != RunOngoing {
 		return
 	}
 	scaled := inGameSeconds * g.state.GetTimeMultiplier()
@@ -420,6 +425,8 @@ func (g *GameInstance) Advance(inGameSeconds float64) {
 	daysPassed := g.state.GetClock().Advance(scaled)
 	g.state.GetTimeKeeper().AdvanceBySeconds(scaled)
 	g.tickVampire(scaled)
+	g.checkForTrespass()
+	g.checkForBodyDiscovery()
 
 	for i := 0; i < daysPassed; i++ {
 		g.onDayBoundary()

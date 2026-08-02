@@ -56,6 +56,10 @@ func ReadObligations(file io.Reader, people map[string]*Townsperson, namedLocati
 				obligation.Performed = field.Value
 			case "absent":
 				obligation.Absent = field.Value
+			case "private":
+				obligation.Private = strings.EqualFold(field.Value, "true") || field.Value == "1"
+			case "witness":
+				obligation.Witnesses = append(obligation.Witnesses, field.Value)
 			}
 		}
 
@@ -79,6 +83,7 @@ func ReadObligations(file io.Reader, people map[string]*Townsperson, namedLocati
 			}
 		}
 
+		obligation.OriginalOwner = obligation.Owner
 		owner.TakeObligation(obligation)
 		all = append(all, obligation)
 	}

@@ -130,6 +130,9 @@ func (u *UIController) handleKeyboardInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyH) {
 		u.context.HideBody()
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyEnd) {
+		u.context.LeaveTown()
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyPeriod) {
 		u.context.WaitUntil(common.WaitUntilDawn)
 	}

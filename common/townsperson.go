@@ -109,8 +109,46 @@ type Townsperson struct {
 	Presence       Presence
 	AbsentSinceDay int
 	BodyHidden     bool
+	HasWithdrawn   bool
 
 	schedule Schedule
+}
+
+// Withdraw is how a Townsperson responds to having seen the vampire where he did
+// not belong. Their Routine shifts indoors — the hours they would have spent out
+// in the open are given back to wherever they sleep. Nothing is reported and
+// nobody else is told; they simply become harder to reach.
+//
+// This is the only thing in the game that modifies a Routine.
+func (t *Townsperson) Withdraw() {
+	if t.HasWithdrawn {
+		return
+	}
+	t.HasWithdrawn = true
+
+	home, found := t.homeLocation()
+	if !found {
+		return
+	}
+	for i := range t.Routine {
+		if t.Routine[i].Activity == "sleep" || t.Routine[i].At == home {
+			continue
+		}
+		// Anything that is not sleep now happens at home instead of out in the town.
+		t.Routine[i].At = home
+		t.Routine[i].Activity = t.Routine[i].Activity + "_indoors"
+	}
+	t.schedule = nil
+}
+
+// homeLocation is wherever this Townsperson sleeps.
+func (t *Townsperson) homeLocation() (geometry.Point, bool) {
+	for _, slot := range t.Routine {
+		if slot.Activity == "sleep" {
+			return slot.At, true
+		}
+	}
+	return geometry.Point{}, false
 }
 
 // GoAbsent is what a Kill does to a Townsperson as far as the town is

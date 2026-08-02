@@ -20,7 +20,7 @@ func (d NullUI) FadeFromBlack() {
 
 }
 
-func (d NullUI) SetDebugActions(actions func()common.DebugActions) {
+func (d NullUI) SetDebugActions(actions func() common.DebugActions) {
 
 }
 

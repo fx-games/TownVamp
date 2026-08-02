@@ -18,7 +18,7 @@ identity: keeps two sets of books and is frightened of the elder
 routine: 22:00-05:00 sleep 12,9
 routine: 06:00-07:00 meal 12,9
 routine: 07:00-19:00 trade 17,11
-routine: 19:00-22:00 home 12,9
+routine: 19:00-21:00 home 12,9
 
 internal_name: abel
 role: builder
@@ -53,6 +53,6 @@ routine: 06:00-16:00 fields 47,13
 internal_name: greta
 role: smith
 identity: is the only one who knows who really started the fire
-routine: 22:00-06:00 sleep 17,5
+routine: 01:00-06:00 sleep 17,5
 routine: 06:00-07:00 meal 17,5
 routine: 07:00-18:00 forge 20,6
