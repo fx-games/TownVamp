@@ -28,6 +28,9 @@ func (g *GameInstance) getScheduledAction(actor *common.Actor) (int, func()) {
 	}
 
 	slot, hasSlot := person.Schedule().EntryAt(g.state.GetClock().SecondsSinceMidnight())
+	if hasSlot {
+		slot = g.relocatedIfHiding(actor, slot)
+	}
 	if !hasSlot {
 		return waitOneStep(stepCost) // unclaimed hour: spare capacity, spent standing still
 	}
@@ -146,20 +149,32 @@ func (g *GameInstance) showUnmetObligations() {
 	}
 }
 
-// privateActionIsWatched asks whether anyone outside the Witness Whitelist can
-// currently see this act. It is checked while the act is in progress, not only
-// when it starts, so someone wandering in halfway breaks it off too.
+// privateActionIsWatched asks whether the Townsperson has *noticed* someone
+// outside the Witness Whitelist. The direction matters: it is not enough that a
+// watcher can see them, the performer has to see the watcher.
+//
+// That is what makes darkness worth something. A vampire standing further off
+// than a human can see at night watches the whole thing and is never noticed —
+// the act happens, and the player learns the secret. Test it the other way round
+// and being hidden buys nothing, because the performer breaks off whenever the
+// player has line of sight.
+//
+// Checked while the act is in progress, not only when it starts, so someone
+// wandering in halfway breaks it off too.
 func (g *GameInstance) privateActionIsWatched(actor *common.Actor, entry common.ScheduleEntry) (*common.Actor, bool) {
 	if !entry.IsObligation() || !entry.Obligation.Private {
 		return nil, false
 	}
-	for _, watcher := range g.whoCanSee(actor.MapPosition(), actor) {
-		name := watcher.GetInternalName()
-		if watcher == g.state.GetPlayer() {
-			name = "" // the vampire is on nobody's whitelist
+	for _, other := range g.state.GetMap().Actors() {
+		if other == actor {
+			continue
 		}
-		if !entry.Obligation.MayWitness(name) {
-			return watcher, true
+		if entry.Obligation.MayWitness(g.whitelistNameOf(other)) {
+			continue
+		}
+		// Does the performer notice them, and could they see the act from there?
+		if g.canSee(actor, other.MapPosition()) && g.canSee(other, actor.MapPosition()) {
+			return other, true
 		}
 	}
 	return nil, false
@@ -177,6 +192,9 @@ func (g *GameInstance) seekPrivacy(actor *common.Actor, entry common.ScheduleEnt
 	if !found {
 		return waitOneStep(stepCost) // nowhere to go; simply do not do it
 	}
+	// Remember it, or they walk back to the authored spot next tick and the whole
+	// thing becomes a ping-pong.
+	g.privacyRefuge[refugeKey(actor, entry)] = refuge
 	next, reachable := g.nextStepTowards(actor, refuge)
 	if !reachable {
 		return waitOneStep(stepCost)
@@ -198,15 +216,8 @@ func (g *GameInstance) findUnobservedTileNear(actor *common.Actor, entry common.
 				continue
 			}
 			seen := false
-			for _, watcher := range g.whoCanSee(candidate, actor) {
-				name := watcher.GetInternalName()
-				if watcher == g.state.GetPlayer() {
-					name = ""
-				}
-				if !entry.Obligation.MayWitness(name) {
-					seen = true
-					break
-				}
+			if _, spotted := g.forbiddenWatcher(candidate, actor, entry.Obligation); spotted {
+				seen = true
 			}
 			if !seen {
 				return candidate, true
@@ -247,4 +258,21 @@ func abs(v int) int {
 		return -v
 	}
 	return v
+}
+
+// relocatedIfHiding redirects a Private Action to wherever its owner retreated
+// to today. Without it they walk straight back to the authored spot the moment
+// they arrive at the refuge, and the whole thing turns into a ping-pong.
+func (g *GameInstance) relocatedIfHiding(actor *common.Actor, entry common.ScheduleEntry) common.ScheduleEntry {
+	if !entry.IsObligation() || !entry.Obligation.Private {
+		return entry
+	}
+	if refuge, moved := g.privacyRefuge[refugeKey(actor, entry)]; moved {
+		entry.At = refuge
+	}
+	return entry
+}
+
+func refugeKey(actor *common.Actor, entry common.ScheduleEntry) string {
+	return actor.GetInternalName() + ":" + entry.Obligation.ID
 }

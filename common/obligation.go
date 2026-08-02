@@ -3,6 +3,7 @@ package common
 import (
 	"fmt"
 	"rpg/geometry"
+	"slices"
 )
 
 // Obligation is a duty a Townsperson owes, pointing either at another
@@ -62,12 +63,7 @@ func (o *Obligation) MayWitness(internalName string) bool {
 	if internalName == o.Owner {
 		return true
 	}
-	for _, permitted := range o.Witnesses {
-		if permitted == internalName {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(o.Witnesses, internalName)
 }
 
 func (o *Obligation) DurationSeconds() int {

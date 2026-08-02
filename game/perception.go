@@ -10,15 +10,16 @@ const (
 	// doing. Beyond it a figure is a figure, not a witnessable act.
 	WitnessRange = 8
 
-	// LanternRange is how far anyone carrying a light can see at night. It is
-	// short on purpose: the light that lets them move is the same light that
-	// ruins their night vision, so a lantern shrinks the world to the pool it
-	// casts. This is the asymmetry the whole design rests on, expressed as a
-	// range rather than read off the map — the town marks no lit tiles, so the
-	// engine's own occlusion rule has nothing to work with here.
+	// After dark a human sees very little, and a lantern only buys the pool it
+	// casts. The vampire is under no such limit — that asymmetry is the whole
+	// reason he can watch without being watched, and it is what makes standing
+	// in the dark a decision rather than flavour.
 	//
-	// ponytail: replace with the map's lighting once the town has lit tiles.
-	LanternRange = 3
+	// ponytail: expressed as ranges because the town marks no lit tiles, so the
+	// engine's own occlusion rule has nothing to work with. Replace with the
+	// map's lighting once the town has them.
+	NightSightRange = 2
+	LanternRange    = 3
 )
 
 // canSee is the one perception query in the game. It is deliberately narrow:
@@ -30,17 +31,7 @@ func (g *GameInstance) canSee(observer *common.Actor, target geometry.Point) boo
 	currentMap := g.state.GetMap()
 	from := observer.MapPosition()
 
-	reach := WitnessRange
-	if !g.state.IsDaylight() && g.carriesLight(observer) {
-		reach = LanternRange
-	}
-	if currentMap.MoveDistance(from, target) > reach {
-		return false
-	}
-
-	// The engine's own rule, kept for when the map gains lit tiles: a viewer
-	// standing in light cannot see into the dark.
-	if currentMap.IsTileLit(from) && !currentMap.IsTileLit(target) && !g.state.IsDaylight() {
+	if currentMap.MoveDistance(from, target) > g.sightRangeOf(observer) {
 		return false
 	}
 
@@ -69,9 +60,27 @@ func (g *GameInstance) whoCanSee(place geometry.Point, except *common.Actor) []*
 	return watchers
 }
 
-// carriesLight reports whether an observer is lit, and therefore blind beyond
-// the pool their own lantern casts. Hunters carry one by definition; ordinary
-// Townspeople are indoors after dark and are not out looking for anyone.
+// sightRangeOf is how far an observer can make anything out. The vampire sees
+// as well at night as by day; everyone else does not, which is the asymmetry the
+// design depends on.
+func (g *GameInstance) sightRangeOf(observer *common.Actor) int {
+	if observer == nil {
+		return 0
+	}
+	if observer == g.state.GetPlayer() {
+		return WitnessRange
+	}
+	if g.state.IsDaylight() {
+		return WitnessRange
+	}
+	if g.carriesLight(observer) {
+		return LanternRange
+	}
+	return NightSightRange
+}
+
+// carriesLight reports whether an observer has a light of their own. Hunters
+// carry one by definition.
 func (g *GameInstance) carriesLight(observer *common.Actor) bool {
 	if observer == nil {
 		return false
@@ -80,4 +89,26 @@ func (g *GameInstance) carriesLight(observer *common.Actor) bool {
 		return true
 	}
 	return observer.GetEquipment() != nil && observer.GetEquipment().HasLightSourceEquipped()
+}
+
+// forbiddenWatcher returns the first person able to see a place who is not on the
+// given whitelist. Callers pass the actor doing the thing so they are not counted
+// as their own witness.
+func (g *GameInstance) forbiddenWatcher(place geometry.Point, actor *common.Actor, obligation *common.Obligation) (*common.Actor, bool) {
+	for _, watcher := range g.whoCanSee(place, actor) {
+		if !obligation.MayWitness(g.whitelistNameOf(watcher)) {
+			return watcher, true
+		}
+	}
+	return nil, false
+}
+
+// whitelistNameOf is how an actor is known to a Witness Whitelist. The vampire
+// has no name there and never will: he is on nobody's list, which is what makes
+// observing a secret require being hidden rather than merely being nearby.
+func (g *GameInstance) whitelistNameOf(actor *common.Actor) string {
+	if actor == g.state.GetPlayer() {
+		return ""
+	}
+	return actor.GetInternalName()
 }

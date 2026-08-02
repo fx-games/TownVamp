@@ -8,6 +8,7 @@ import (
 	"rpg/geometry"
 	"rpg/gridmap"
 	"rpg/recfile"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -16,12 +17,11 @@ import (
 // layer is empty, so these are authored alongside the Townspeople and painted
 // onto the map at load.
 type TownZone struct {
-	Name       string
-	Private    bool
-	Rect       geometry.Rect
-	BelongsTo  []string
-	zoneOnMap  *gridmap.ZoneInfo
-	Withdrawal bool
+	Name      string
+	Private   bool
+	Rect      geometry.Rect
+	BelongsTo []string
+	zoneOnMap *gridmap.ZoneInfo
 }
 
 // MayEnter is the Zone half of the question secrecy turns on: may this person be
@@ -31,12 +31,7 @@ func (z *TownZone) MayEnter(internalName string) bool {
 	if !z.Private {
 		return true
 	}
-	for _, resident := range z.BelongsTo {
-		if resident == internalName {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(z.BelongsTo, internalName)
 }
 
 func (g *GameInstance) loadZones() {
@@ -112,8 +107,7 @@ func parseRect(value string) (geometry.Rect, error) {
 // zoneAt finds the authored Zone covering a tile, if any.
 func (g *GameInstance) zoneAt(at geometry.Point) *TownZone {
 	for _, zone := range g.zones {
-		if at.X >= zone.Rect.Min.X && at.X < zone.Rect.Max.X &&
-			at.Y >= zone.Rect.Min.Y && at.Y < zone.Rect.Max.Y {
+		if zone.Rect.Contains(at) {
 			return zone
 		}
 	}
@@ -132,8 +126,9 @@ func (g *GameInstance) checkForTrespass() {
 	if player == nil || !player.IsAlive() {
 		return
 	}
+	// The vampire belongs to no household, so any private Zone is a trespass.
 	zone := g.zoneAt(player.MapPosition())
-	if zone == nil || !zone.Private || zone.MayEnter("") {
+	if zone == nil || !zone.Private {
 		return
 	}
 
@@ -150,10 +145,9 @@ func (g *GameInstance) checkForTrespass() {
 }
 
 func (g *GameInstance) witnessTrespass(actor *common.Actor, person *common.Townsperson, zone *TownZone) {
-	if g.withdrawn[person.InternalName] {
+	if person.HasWithdrawn {
 		return
 	}
-	g.withdrawn[person.InternalName] = true
 	person.Withdraw()
 
 	g.fleeFrom(actor, g.state.GetPlayer().MapPosition())

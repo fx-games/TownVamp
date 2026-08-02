@@ -86,8 +86,9 @@ func (g *GameInstance) spawnHunter(near geometry.Point) {
 // getHunterAction is the Hunter's whole behaviour: walk the town at night, and
 // pursue the vampire on sight.
 //
-// The lantern it carries puts it under the same occlusion rule as everyone else,
-// so it hunts the vampire with the one thing that stops it seeing into the dark.
+// The lantern it carries is what limits it. A Hunter sees only the pool its own
+// light casts, while the vampire sees the whole street — so it hunts him with
+// the one thing that keeps it from finding him.
 func (g *GameInstance) getHunterAction(actor *common.Actor) (int, func()) {
 	stepCost := 100 / actor.GetMoveSpeed()
 	if actor.GetEnergy() < stepCost {
@@ -95,6 +96,12 @@ func (g *GameInstance) getHunterAction(actor *common.Actor) (int, func()) {
 	}
 	player := g.state.GetPlayer()
 	if player == nil || !player.IsAlive() || g.ending != RunOngoing {
+		return waitOneStep(stepCost)
+	}
+
+	// A Hunter walks the town at night. By day there is nothing to find, and the
+	// vampire is not out in it.
+	if g.state.IsDaylight() {
 		return waitOneStep(stepCost)
 	}
 

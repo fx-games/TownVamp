@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"rpg/common"
 	"rpg/util"
+	"strings"
 )
 
 // EpilogueSlide is one card of the ending: a Townsperson's end state and what
@@ -146,5 +147,5 @@ func titleCase(value string) string {
 	if value == "" {
 		return value
 	}
-	return string(value[0]-32) + value[1:]
+	return strings.ToUpper(value[:1]) + value[1:]
 }

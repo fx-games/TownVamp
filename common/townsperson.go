@@ -130,13 +130,30 @@ func (t *Townsperson) Withdraw() {
 	if !found {
 		return
 	}
+	// A bias, not confinement. They keep working — the town would notice if they
+	// stopped — but the hours around the edges of the day, the ones spent out in
+	// the open for no particular reason, are given back to home. Enough of this
+	// across enough people and the vampire simply runs out of reachable victims.
+	moved := 0
 	for i := range t.Routine {
-		if t.Routine[i].Activity == "sleep" || t.Routine[i].At == home {
+		slot := t.Routine[i]
+		if slot.Activity == "sleep" || slot.At == home {
 			continue
 		}
-		// Anything that is not sleep now happens at home instead of out in the town.
+		if slot.DurationSeconds() > 2*3600 {
+			continue // their actual work; they still have to do it
+		}
 		t.Routine[i].At = home
-		t.Routine[i].Activity = t.Routine[i].Activity + "_indoors"
+		t.Routine[i].Activity = slot.Activity + "_indoors"
+		moved++
+	}
+
+	// Private Actions are postponed too: someone who has just seen a stranger in
+	// their house is not about to keep a secret appointment in the open.
+	for _, obligation := range t.Obligations {
+		if obligation.Private {
+			obligation.At = home
+		}
 	}
 	t.schedule = nil
 }

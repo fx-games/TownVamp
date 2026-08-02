@@ -83,7 +83,7 @@ type GameInstance struct {
 	warnedAboutDawn bool
 	zones           []*TownZone
 	hunter          *common.Actor
-	withdrawn       map[string]bool
+	privacyRefuge   map[string]geometry.Point
 
 	logHook     func(string)
 	logBuffer   []string
@@ -269,7 +269,7 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	g.blood = common.NewBlood()
 	g.townspeople = nil
 	g.bodies = make(map[string]geometry.Point)
-	g.withdrawn = make(map[string]bool)
+	g.privacyRefuge = make(map[string]geometry.Point)
 	g.hunter = nil
 	g.ending = RunOngoing
 	g.state.SetRandomSource(g.randomSource)
@@ -452,6 +452,7 @@ func (g *GameInstance) Advance(inGameSeconds float64) {
 // Reassignment will hang.
 func (g *GameInstance) onDayBoundary() {
 	g.announcedToday = make(map[string]bool)
+	g.privacyRefuge = make(map[string]geometry.Point)
 
 	g.reassignVoidedObligations()
 
