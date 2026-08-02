@@ -1,0 +1,12 @@
+.idea/
+exclude/
+cpu.prof
+.DS_Store
+builds/
+./rpg
+rpg
+builds/
+exclude/
+assets/maps/
+assets/maps/backups/
+assets/oryx/
