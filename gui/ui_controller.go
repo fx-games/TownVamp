@@ -111,7 +111,6 @@ type UIController struct {
 	shouldQuitGame   bool
 	mousePosInPixels geometry.Point
 
-	targeter                   *Targeter
 	tilemapAnimations          map[int32]TilemapAnimInfo
 	deviceDPIScale             float64
 	tileScale                  float64
@@ -871,26 +870,14 @@ func (u *UIController) addSkillsOverlay(pixelEdgeFromBottomRight geometry.Point)
 	dataSource := IconDataSource{
 		IsHighlighted: isEquipped,
 		GetElements:   getList,
-		OnSelection: func(element UIElement) {
-			switch typedElement := element.(type) {
-			case *common.UntargetedAction:
-				u.context.PlayerAction().ActivateUntargetedAction(typedElement, common.EffectSource(typedElement.GetInternalName()))
-			case *common.TargetedAction:
-				u.context.PlayerAction().BeginActionTargeting(typedElement)
-			}
-		},
+		OnSelection: func(element UIElement) {},
 	}
 
 	return u.OpenSkillsOverlay(pixelEdgeFromBottomRight, tileSize, dataSource)
 }
 func (u *UIController) GetActiveSkillsForUI(player *common.Actor) []UIElement {
 	var activeSkills []UIElement
-	for _, skill := range player.GetTargetedSkills() {
-		activeSkills = append(activeSkills, skill)
-	}
-	for _, skill := range player.GetUntargetedSkills() {
-		activeSkills = append(activeSkills, skill)
-	}
+	_ = player
 	return activeSkills
 }
 
@@ -916,10 +903,6 @@ func (u *UIController) getCurrentTimedEffects() []UIElement {
 		switch being.(type) {
 		case *common.Actor:
 			return false
-		case *common.UntargetedAction: // this is used to delay activation of spells
-			return true
-		case *common.TimedModifier: // these are temporary buffs/debuffs to a characters' stats
-			return true
 		default:
 			return false
 		}
@@ -927,12 +910,6 @@ func (u *UIController) getCurrentTimedEffects() []UIElement {
 		result = append(result, timedBeing.(UIElement))
 	}
 
-	for statusName, turnsLeft := range u.context.GameState().GetPlayer().GetStatusEffects().AllEntries() {
-		result = append(result, NewStatusEffectWidget(statusName, turnsLeft))
-	}
-	for _, statusEffect := range u.context.GameState().GetPlayer().GetParametrizedStatusEffects() {
-		result = append(result, NewStatusEffectWidget(statusEffect.GetName(), statusEffect.TurnsLeft()))
-	}
 	return result
 }
 func (u *UIController) SetTTFFont(file io.ReaderAt, size float64) {
@@ -989,11 +966,6 @@ func (u *UIController) getMiniMapColor(mapPos geometry.Point, tileColor *[4]byte
 	}
 	if !state.GetPlayer().CanSee(mapPos) {
 		if currentMap.IsSpecialAt(mapPos, gridmap.SpecialTileWater) {
-			if !state.GetFlags().IsSet(fmt.Sprintf("all_clear:%s", defs.SpecialLevelPoisonedWaterSupply)) {
-				//199, G: 251, B: 161
-				*tileColor = [4]byte{199 / 2, 251 / 2, 161 / 2, 255}
-				return
-			}
 			*tileColor = [4]byte{86 / 2, 112 / 2, 194 / 2, 255}
 			return
 		}
@@ -1015,11 +987,6 @@ func (u *UIController) getMiniMapColor(mapPos geometry.Point, tileColor *[4]byte
 	}
 
 	if currentMap.IsSpecialAt(mapPos, gridmap.SpecialTileWater) {
-		if !state.GetFlags().IsSet(fmt.Sprintf("all_clear:%s", defs.SpecialLevelPoisonedWaterSupply)) {
-			//199, G: 251, B: 161
-			*tileColor = [4]byte{199, 251, 161, 255}
-			return
-		}
 		*tileColor = [4]byte{86, 112, 194, 255}
 		return
 	}
@@ -1053,7 +1020,6 @@ func (u *UIController) StaticMapLookup(x int, y int, tick uint64) []renderer.Cel
 	if tileAt.Special == gridmap.SpecialTileWater {
 		worldTileColor = state.GetWaterColor()
 	}
-
 
 	// animate the worldIcon
 	if u.renderingMode == GraphicRendering && (state.GetPlayer().CanSee(mapPos) || u.disableFogOfWar) {
@@ -1154,48 +1120,10 @@ func (u *UIController) Cancel() {
 		u.OnCommand(PlayerCommandCancel)
 		return
 	}
-	if u.targeter != nil {
-		u.CancelTargeting()
-		return
-	}
 	if u.inventory.IsActive() {
 		u.inventory.Deactivate()
 		return
 	}
-}
-
-func (u *UIController) CancelTargeting() {
-	u.targeter = nil
-}
-
-func (u *UIController) BeginThrowTargeting(targetRules common.TargetRules, onSelected func(attacker *common.Actor, target geometry.Point)) {
-	state := u.context.GameState()
-	if !state.GetPlayer().IsAlive() {
-		return
-	}
-	act := u.context.PlayerAction()
-	act.CancelAutoMove()
-	msg := u.msg
-	u.targeter = NewTargeter(u, targetRules, &common.HitEffect{
-		Activate: func(attacker *common.Actor, target geometry.Point, hitPositions []geometry.Point) {
-			u.CancelTargeting()
-
-			origin := state.GetPlayer().MapPosition()
-			if origin == target {
-				msg("You can't attack yourself like that")
-				return
-			}
-			u.context.Animator().CancelAllAnimations()
-			act.CancelAutoMove()
-			onSelected(attacker, target)
-		},
-		Description: []util.LabelText{
-			util.LabelTextFromString(fmt.Sprintf("Throw")),
-		},
-	})
-}
-func (u *UIController) BeginTargeting(targetRules common.TargetRules, onHit *common.HitEffect) {
-	u.targeter = NewTargeter(u, targetRules, onHit)
 }
 
 func (u *UIController) ShowGameOverMenu() {
@@ -1549,8 +1477,7 @@ func (u *UIController) showJournal() {
 	if !state.IsStoryModeEnabled() {
 		return
 	}
-	entries := u.context.GameState().GetQuestLog(u.tileRenderer.ParseColorCodedText)
-	u.OpenTextWindow(entries)
+
 }
 
 func (u *UIController) showFlags() {

@@ -114,21 +114,6 @@ func (u *UIController) handleKeyboardInput() {
 		act.PickUpItem()
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyF) {
-		if u.targeter != nil && u.targeter.HasValidTarget() {
-			u.targeter.Activate()
-			u.CancelTargeting()
-		} else {
-			act.AimedRangedAttack()
-		}
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyV) {
-		act.AimedThrow()
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyQ) {
-		act.QuickRangedAttack()
-	}
-
 	if inpututil.IsKeyJustPressed(ebiten.KeyL) {
 		u.ShowLog()
 	}
@@ -204,10 +189,6 @@ func (u *UIController) handleKeyboardInput() {
 		act.StartAutoExplore()
 	}
 
-	if isBeingPressedRepeatedly(ebiten.KeyTab) {
-		act.AutoAttack()
-	}
-
 	if inpututil.IsKeyJustPressed(ebiten.KeyJ) {
 		u.context.DebugActions().GoOneLevelUp()
 	}
@@ -269,9 +250,6 @@ func (u *UIController) handleMouseInput() {
 	   }
 
 	*/
-	if newMapPos != u.mousePosOnMap && u.targeter != nil {
-		u.targeter.OnMouseMoved(newMapPos)
-	}
 	u.mousePosOnMap = newMapPos
 
 	if mouseMoved {
@@ -300,13 +278,6 @@ func (u *UIController) handleMouseInput() {
 		if !state.GetMap().Contains(u.mousePosOnMap) || !visibleMap.Contains(u.mousePosOnMap) {
 			return
 		}
-		if u.targeter != nil {
-			u.targeter.OnMouseClicked(u.mousePosOnMap)
-			if u.targeter.IsDone() {
-				u.CancelTargeting()
-			}
-			return
-		}
 		if !handledByUI {
 			u.onMapClicked(mouseButton, u.mousePosOnMap)
 		}
@@ -319,9 +290,7 @@ func (u *UIController) onMapClicked(mouseButton ebiten.MouseButton, mapPos geome
 	act := u.context.PlayerAction()
 	state := u.context.GameState()
 	currentMap := state.GetMap()
-	if mouseButton == ebiten.MouseButtonRight && currentMap.IsActorAt(mapPos) && state.GetPlayer().CanSee(mapPos) {
-		act.ShowActorInfoAt(mapPos)
-	} else if mouseButton == ebiten.MouseButtonLeft && currentMap.IsExplored(mapPos) {
+	if mouseButton == ebiten.MouseButtonLeft && currentMap.IsExplored(mapPos) {
 		act.CancelAutoMove()
 		act.StartPlayerAutoMovement(mapPos)
 	}

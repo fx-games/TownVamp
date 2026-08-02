@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"rpg/geometry"
+	"rpg/gridmap"
+	"rpg/stats"
 )
 
 type OnMoveHook struct {
@@ -71,6 +73,24 @@ func (d OnMoveHook) logObjectsAtLocation(context ActionContext, pos geometry.Poi
 		item := state.GetMap().ItemAt(pos)
 		context.Msg(fmt.Sprintf("You see [:darkText]%s", item.Name()))
 		return item
+	}
+	return nil
+}
+
+// TriggerCellEffectsDuringMovementForActor fires whatever the tile an actor just
+// stepped onto does to them. It lived in the knockback action, which went with
+// the combat systems, but movement still needs it.
+func TriggerCellEffectsDuringMovementForActor(state *State, sourceAction Action, actor *Actor, mapPos geometry.Point, startAnimating func() bool) []Action {
+	currentMap := state.GetMap()
+
+	if currentMap.IsObjectAt(mapPos) {
+		currentMap.ObjectAt(mapPos).ActorWalkedOn(actor, startAnimating)
+	}
+
+	if currentMap.GetCell(mapPos).TileType.Special == gridmap.SpecialTileDamaging {
+		action := NewChangeResourceAction(sourceAction.Cause(), actor, stats.Health, -3)
+		action.SetAnimationStartPredicate(startAnimating)
+		return OneAction(action)
 	}
 	return nil
 }

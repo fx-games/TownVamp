@@ -65,7 +65,6 @@ type UserInterface interface {
 	OpenMenu(options []util.MenuItem)
 	OpenTextWindow(msg []util.LabelText)
 
-	CancelTargeting()
 	ShowFullStats()
 	UpdateStatsLabel()
 
@@ -76,13 +75,11 @@ type UserInterface interface {
 
 	// Action specific
 	Say(actor *Actor, linesOfText []string)
-	BeginTargeting(rules TargetRules, onHit *HitEffect)
 
 	// Vendor interactions
 	OpenShopMenu(npc *Actor)
 	BeginPlayerSellingTo(vendor *Actor)
 
-	OpenTransferEnchantmentMenu()
 	OpenListInventoryForSelection(filter func(element *Item) bool, selected func(itemKey rune))
 	UpdateMiniMap()
 	OpenPlayerStashInTown()

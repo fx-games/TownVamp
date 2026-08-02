@@ -210,15 +210,6 @@ func (i *Inventory) HasEnchantableArmor() bool {
 	return false
 }
 
-func (i *Inventory) HasEnchantableWeapon() bool {
-	for _, item := range i.items {
-		if item.IsWeapon() && item.GetWeaponStats().CanBeFurtherEnchanted() {
-			return true
-		}
-	}
-	return false
-}
-
 func (i *Inventory) SetOnChangeHandler(onChanged func()) {
 	i.onChanged = onChanged
 }
@@ -263,21 +254,6 @@ func SortInventory(stacks []InventoryStack) {
 			return cmp.Compare(itemTypeOne, itemTypeTwo)
 		} else {
 			switch itemTypeOne {
-			case defs.ItemCategoryWeapon:
-				weaponPartOne := itemI.GetWeaponStats()
-				weaponPartTwo := itemJ.GetWeaponStats()
-				if weaponPartTwo.Type != weaponPartOne.Type {
-					return cmp.Compare(weaponPartOne.Type, weaponPartTwo.Type)
-				}
-				if weaponPartOne.Damage.Max() != weaponPartTwo.Damage.Max() {
-					return cmp.Compare(weaponPartOne.Damage.Max(), weaponPartTwo.Damage.Max())
-				}
-				if weaponPartOne.Damage.Min() != weaponPartTwo.Damage.Min() {
-					return cmp.Compare(weaponPartOne.Damage.Min(), weaponPartTwo.Damage.Min())
-				}
-				if weaponPartOne.Plus != weaponPartTwo.Plus {
-					return cmp.Compare(weaponPartOne.Plus, weaponPartTwo.Plus)
-				}
 			case defs.ItemCategoryArmor:
 				armorPartOne := itemI.GetArmorStats()
 				armorPartTwo := itemJ.GetArmorStats()

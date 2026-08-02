@@ -89,10 +89,8 @@ type Item struct {
 	pos  geometry.Point
 	icon int32
 
-	weaponComponent *WeaponStats
 	armorComponent  *ArmorStats
 	lightComponent  *LightStats
-	throwComponent  *ThrowStats
 
 	qualityLevel      int
 	equippedModifiers []*stats.Modifier
@@ -107,8 +105,6 @@ type Item struct {
 
 	forcedTooltip     []util.LabelText
 	itemHooks         []ItemActionHook
-	targetedAction    *TargetedAction
-	untargetedAction  *UntargetedAction
 	actionCharges     int
 	destroyAfterUse   bool
 	nameOnlyInTooltip bool
@@ -186,21 +182,11 @@ func (i *Item) BuyPrice() int {
 		plusValue := i.armorComponent.Plus * pricePerPlus
 		itemPrice += plusValue
 	}
-	if i.IsWeapon() {
-		pricePerPlus := 45
-		plusValue := i.weaponComponent.Plus * pricePerPlus
-		itemPrice += plusValue
-	}
 	chargeMultiplier := 20 // for infinite charges
 	if !i.HasInfiniteCharges() {
 		chargeMultiplier = i.GetCharges()
 	}
-	if i.HasTargetedAction() {
-		itemPrice += i.targetedAction.GetMonetaryValue()*chargeMultiplier
-	}
-	if i.HasUntargetedAction() {
-		itemPrice += i.untargetedAction.GetMonetaryValue()*chargeMultiplier
-	}
+	_ = chargeMultiplier
 	if i.HasModifiers() {
 		for _, m := range i.equippedModifiers {
 			itemPrice += m.GetMonetaryValue()
@@ -277,37 +263,35 @@ func (i *Item) String() string {
 	return i.Name()
 }
 
+// The weapon, throwable and skill components of an item went with the combat
+// systems. These report false so the equipment and inventory code — which is
+// mothballed rather than deleted — still compiles and behaves sanely.
 func (i *Item) IsWeapon() bool {
-	return i.weaponComponent != nil
+	return false
+}
+
+func (i *Item) IsMeleeWeapon() bool {
+	return false
+}
+
+func (i *Item) IsRangedWeapon() bool {
+	return false
+}
+
+func (i *Item) IsThrowable() bool {
+	return false
 }
 
 func (i *Item) IsArmor() bool {
 	return i.armorComponent != nil
 }
 
-func (i *Item) IsMeleeWeapon() bool {
-	return i.IsWeapon() && i.weaponComponent.IsMeleeWeapon()
-}
-
-func (i *Item) IsRangedWeapon() bool {
-	return i.IsWeapon() && i.weaponComponent.IsRangedWeapon()
-}
-
 func (i *Item) SlotName() defs.SlotName {
 	if i.IsLightSource() {
 		return defs.SlotNameLightSource
 	}
-	if i.IsRangedWeapon() {
-		return defs.SlotNameMissileLauncher
-	}
 	if i.IsArmor() {
 		return i.armorComponent.Type.GetInventorySlot()
-	}
-	if i.IsWeapon() {
-		return i.weaponComponent.GetInventorySlot()
-	}
-	if i.IsThrowable() {
-		return defs.SlotNameQuiver
 	}
 	if i.IsRing() {
 		return defs.SlotNameRing
@@ -330,20 +314,12 @@ func (i *Item) SetMapPosition(pos geometry.Point) {
 	i.pos = pos
 }
 
-func (i *Item) GetWeaponStats() *WeaponStats {
-	return i.weaponComponent
-}
-
 func (i *Item) GetArmorStats() *ArmorStats {
 	return i.armorComponent
 }
 
 func (i *Item) SetQualityLevel(level int) {
 	i.qualityLevel = level
-}
-
-func (i *Item) SetWeaponComponent(component *WeaponStats) {
-	i.weaponComponent = component
 }
 
 func (i *Item) SetEquippedModifiers(modifiers []*stats.Modifier) {
@@ -376,13 +352,6 @@ func (i *Item) SetArmorComponent(component *ArmorStats) {
 	i.armorComponent = component
 }
 
-func (i *Item) GetThrowStats() *ThrowStats {
-	return i.throwComponent
-}
-
-func (i *Item) GetWeaponStatsAsString() []util.LabelText {
-	return i.GetWeaponStats().ToString(i.getPlayer())
-}
 func (i *Item) GetArmorStatsAsString() []util.LabelText {
 	return i.GetArmorStats().ToString(i.getPlayer())
 }
@@ -395,14 +364,6 @@ func (i *Item) IsLightSource() bool {
 	return i.lightComponent != nil
 }
 
-func (i *Item) SetThrowComponent(throwComponent *ThrowStats) {
-	i.throwComponent = throwComponent
-}
-
-func (i *Item) IsThrowable() bool {
-	return i.throwComponent != nil
-}
-
 func (i *Item) SetBaseCost(cost int) {
 	i.baseCost = cost
 }
@@ -413,10 +374,8 @@ func (i *Item) Clone() *Item {
 		internalName: 	i.internalName,
 		pos:               i.pos,
 		icon:              i.icon,
-		weaponComponent:   nil,
 		armorComponent:    nil,
 		lightComponent:    nil,
-		throwComponent:    nil,
 		qualityLevel:      i.qualityLevel,
 		equippedModifiers: i.equippedModifiers,
 		getPlayer:         i.getPlayer,
@@ -427,27 +386,15 @@ func (i *Item) Clone() *Item {
 		shouldBeDrawn:     i.shouldBeDrawn,
 		baseCost:          i.baseCost,
 	}
-	if i.weaponComponent != nil {
-		clone.weaponComponent = i.weaponComponent.Clone()
-	}
 	if i.armorComponent != nil {
 		clone.armorComponent = i.armorComponent.Clone()
 	}
 	if i.lightComponent != nil {
 		clone.lightComponent = i.lightComponent.Clone()
 	}
-	if i.throwComponent != nil {
-		clone.throwComponent = i.throwComponent.Clone()
-	}
 
-	var clonedUntargetedAction *UntargetedAction
-	if i.untargetedAction != nil {
-		clonedUntargetedAction = i.untargetedAction.Clone()
-	}
 	clone.forcedTooltip = i.forcedTooltip
 	clone.itemHooks = i.itemHooks
-	clone.targetedAction = i.targetedAction
-	clone.untargetedAction = clonedUntargetedAction
 	clone.actionCharges = i.actionCharges
 	clone.destroyAfterUse = i.destroyAfterUse
 	clone.nameOnlyInTooltip = i.nameOnlyInTooltip
@@ -482,21 +429,7 @@ func (i *Item) CanStackWith(other *Item) bool {
 	if i.GetCharges() != other.GetCharges() {
 		return false
 	}
-	if i.GetUntargetedAction() != nil && other.GetUntargetedAction() != nil {
-		if i.GetUntargetedAction().Name() != other.GetUntargetedAction().Name() {
-			return false
-		}
-	} else if !(i.GetUntargetedAction() == nil && other.GetUntargetedAction() == nil) {
-		return false
-	}
 
-	if i.GetTargetedAction() != nil && other.GetTargetedAction() != nil {
-		if i.GetTargetedAction().Name() != other.GetTargetedAction().Name() {
-			return false
-		}
-	} else if !(i.GetTargetedAction() == nil && other.GetTargetedAction() == nil) {
-		return false
-	}
 	return true
 }
 
@@ -508,15 +441,9 @@ func (i *Item) GetCharges() int {
 }
 
 func (i *Item) HasAction() bool {
-	return i.targetedAction != nil || i.untargetedAction != nil
+	return false
 }
 
-func (i *Item) GetTargetedAction() *TargetedAction {
-	return i.targetedAction
-}
-func (i *Item) GetUntargetedAction() *UntargetedAction {
-	return i.untargetedAction
-}
 func (i *Item) GetItemHooks() []ItemActionHook {
 	return i.itemHooks
 }
@@ -546,7 +473,6 @@ func (i *Item) GetTooltipLines(func(string) []util.ColoredTextPart) []util.Label
 		info = append(info, util.LabelTextFromString(""))
 		info = append(info, useText...)
 		info = append(info, util.LabelTextFromString(""))
-		info = append(info, i.GetWeaponStatsAsString()...)
 	}
 
 	if i.IsArmor() {
@@ -569,29 +495,11 @@ func (i *Item) GetTooltipLines(func(string) []util.ColoredTextPart) []util.Label
 	if i.HasAction() { // wands
 		if i.HasInfiniteCharges() {
 			//info = append(info, common.LabelTextFromString(fmt.Sprintf("Has infinite charges")))
-			if i.targetedAction != nil {
-				info = append(info, i.targetedAction.GetDescription()...)
-			}
-			if i.untargetedAction != nil {
-				info = append(info, i.untargetedAction.GetDescription()...)
-			}
 		} else {
 			if i.SelfDestructs() {
 				info = append(info, util.LabelTextFromString(fmt.Sprintf("Is destroyed after use")))
 			}
 
-			if i.targetedAction != nil {
-				if !i.SelfDestructs() || i.GetCharges() > 1 {
-					info = append(info, util.LabelTextFromString(fmt.Sprintf("Has %d charges", i.GetCharges())))
-				}
-				info = append(info, i.targetedAction.GetDescription()...)
-			}
-			if i.untargetedAction != nil {
-				if !i.SelfDestructs() || i.GetCharges() > 1 {
-					info = append(info, util.LabelTextFromString(fmt.Sprintf("Has %d charges", i.GetCharges())))
-				}
-				info = append(info, i.untargetedAction.GetDescription()...)
-			}
 		}
 
 	}
@@ -610,7 +518,6 @@ func (i *Item) GetTooltipLines(func(string) []util.ColoredTextPart) []util.Label
 		info = append(info, util.LabelTextFromString(fmt.Sprintf("Can be thrown")))
 		info = append(info, util.LabelTextFromString(fmt.Sprintf("Press \"v\" to throw an item")))
 		info = append(info, util.LabelTextFromString(""))
-		info = append(info, i.GetThrowStats().ToLabelText()...)
 	}
 
 	return info
@@ -662,11 +569,11 @@ func (i *Item) IsEquippable() bool {
 }
 
 func (i *Item) HasTargetedAction() bool {
-	return i.targetedAction != nil
+	return false
 }
 
 func (i *Item) HasUntargetedAction() bool {
-	return i.untargetedAction != nil
+	return false
 }
 
 func (i *Item) UseCharge() {
@@ -706,11 +613,6 @@ func flatFunc(i int) func() int {
 
 func (i *Item) BandStyleName() string {
 	name := i.Name()
-	if i.IsWeapon() {
-		weaponValues := i.GetWeaponStats().NameParts()
-		name = fmt.Sprintf("%s %s", name, weaponValues)
-	}
-
 	if i.IsArmor() {
 		armorValues := i.GetArmorStats().NameParts()
 		name = fmt.Sprintf("%s %s", name, armorValues)
@@ -725,15 +627,6 @@ func (i *Item) BandStyleName() string {
 
 func (i *Item) PlusName() string {
 	name := i.Name()
-	if i.IsWeapon() && i.IsArmor() {
-		weaponPlus := fmt.Sprintf("+%d", i.GetWeaponStats().Plus)
-		armorPlus := fmt.Sprintf("+%d", i.GetArmorStats().Plus)
-		return fmt.Sprintf("%s %s %s", name, weaponPlus, armorPlus)
-	}
-	if i.IsWeapon() {
-		weaponPlus := fmt.Sprintf("+%d", i.GetWeaponStats().Plus)
-		return fmt.Sprintf("%s %s", name, weaponPlus)
-	}
 	if i.IsArmor() {
 		armorPlus := fmt.Sprintf("+%d", i.GetArmorStats().Plus)
 		return fmt.Sprintf("%s %s", name, armorPlus)
@@ -743,14 +636,6 @@ func (i *Item) PlusName() string {
 
 func (i *Item) SetDestroyAfterUse(value bool) {
 	i.destroyAfterUse = value
-}
-
-func (i *Item) SetUntargetedAction(action *UntargetedAction) {
-	i.untargetedAction = action
-}
-
-func (i *Item) SetTargetedAction(action *TargetedAction) {
-	i.targetedAction = action
 }
 
 func (i *Item) IsRing() bool {
@@ -780,18 +665,6 @@ func (i *Item) IsTwoHandedWeapon() bool {
 	return i.IsWeapon() && i.SlotName() == defs.SlotNameTwoHandedWeapon
 }
 
-func (i *Item) IsBow() bool {
-	return i.IsRangedWeapon() && i.GetWeaponStats().Type == defs.WeaponTypeBow
-}
-
-func (i *Item) IsCrossbow() bool {
-	return i.IsRangedWeapon() && i.GetWeaponStats().Type == defs.WeaponTypeCrossbow
-}
-
-func (i *Item) IsSlingshot() bool {
-	return i.IsRangedWeapon() && i.GetWeaponStats().Type == defs.WeaponTypeSling
-}
-
 func (i *Item) GetInternalName() string {
 	return i.internalName
 }
@@ -808,9 +681,6 @@ func (i *Item) Repair() {
 	if i.IsArmor() {
 		i.GetArmorStats().Durability.SetToMax()
 	}
-	if i.IsWeapon() {
-		i.GetWeaponStats().Durability.SetToMax()
-	}
 }
 
 func (i *Item) IsFood() bool {
@@ -824,7 +694,6 @@ func (i *Item) HasModifiers() bool {
 func (i *Item) IsQuestItem() bool {
 	return i.isQuestItem
 }
-
 
 type Enchantment interface {
 	ToString() string

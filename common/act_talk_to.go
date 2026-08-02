@@ -71,10 +71,6 @@ func getWandVendorOptions(context ActionContext, vendor *Actor) []util.MenuItem 
 				gui.OpenShopMenu(vendor)
 			},
 		},
-		{
-			MainText: "TRANSFER",
-			Action:   gui.OpenTransferEnchantmentMenu,
-		},
 	}
 
 	if state.IsStoryModeEnabled() {
@@ -164,17 +160,12 @@ func getArmorVendorOptions(context ActionContext, vendor *Actor) []util.MenuItem
 }
 
 func getNPCTalkOption(context ActionContext, vendor *Actor) []util.MenuItem {
-	state := context.GameState
 	gui := context.UserInterface()
 	talkOption := []util.MenuItem{
 		{
 			MainText: "TALK",
 			Action: func() {
-				textForNPC, onShowFunc := state.GetTextForNamedNPC(vendor)
-				gui.OpenTextWindow(textForNPC)
-				if onShowFunc != nil {
-					onShowFunc()
-				}
+				gui.OpenTextWindow(util.ToLabelText([]string{"Hello, I am " + vendor.Name()}))
 			},
 		},
 	}

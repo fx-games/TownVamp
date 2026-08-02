@@ -3,7 +3,6 @@ package gui
 import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"image/color"
-	"rpg/common"
 )
 
 func (u *UIController) Update() error {
@@ -44,8 +43,6 @@ func (u *UIController) Update() error {
 				u.keepBlack = true
 			}
 		}
-	} else if player.HasStatusEffect(common.StatusBerserk) {
-		u.tileRenderer.SetGlobalScaleColor([4]float32{1.0, 0.5, 0.5, 1})
 	} else {
 		u.tileRenderer.SetGlobalScaleColor([4]float32{1, 1, 1, 1})
 	}

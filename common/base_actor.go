@@ -35,7 +35,6 @@ type Actor struct {
 	inventory                 *Inventory
 	equipment                 *Equipment
 	statusEffects             *Flags
-	parametrizedStatusEffects []*ParametrizedStatusEffect
 	isAnimatingMovement       bool
 
 	stats      stats.AttributeHolder
@@ -53,8 +52,6 @@ type Actor struct {
 	internalName       string
 	disableCorpse      bool
 	deathStringFormats []string
-	targetedSkills     []*TargetedAction
-	untargetedSkills   []*UntargetedAction
 	damageDice         util.Dice
 	color              color.RGBA
 }
@@ -223,8 +220,8 @@ func (a *Actor) GetAttackSpeed(attackType AttackType) int {
 		return int(baseAttackSpeed)
 	}
 
-	attackSpeed := int(baseAttackSpeed * weapon.GetWeaponStats().AttackSpeedFactor)
-	return max(1, attackSpeed) // minimum attack speed is 1
+	_ = weapon
+	return int(baseAttackSpeed)
 }
 
 func (a *Actor) GetMoveSpeed() int {
@@ -240,8 +237,7 @@ func (a *Actor) GetDamageDice(attackType AttackType) util.Dice {
 	var damageDice util.Dice
 
 	if hasWeapons {
-		weaponPlus := weapons.GetWeaponStats().Plus
-		damageDice = weapons.GetWeaponStats().Damage.WithBonus(weaponPlus)
+		damageDice = a.damageDice
 	} else if attackType == RangedAttack { // no ranged weapon, no ranged damage
 		return util.NewDice(0,0,0)
 	} else { // no weapon, built in damage
@@ -305,18 +301,6 @@ func (a *Actor) GetInfoText() []string {
 		tableLines = append(tableLines, rangedInfo...)
 	}
 
-	utSkills := a.GetUntargetedSkills()
-	taSkills := a.GetTargetedSkills()
-	if len(utSkills) > 0 || len(taSkills) > 0 {
-		tableLines = append(tableLines, "", "Skills")
-	}
-	for _, utSkill := range utSkills {
-		tableLines = append(tableLines, " "+utSkill.Name())
-	}
-	for _, taSkill := range taSkills {
-		tableLines = append(tableLines, " "+taSkill.Name())
-	}
-
 	baseInfoTable := tableLines
 
 	nameInfo := []string{a.name}
@@ -359,11 +343,7 @@ func (a *Actor) GetState() ActorState {
 	return a.state
 }
 
-
 func (a *Actor) GetArmorClass() int {
-	if a.HasStatusEffect(StatusBerserk) {
-		return 0
-	}
 	baseArmorClass := a.stats.GetAttribute(stats.ArmorClass)
 	armor := baseArmorClass
 	for _, item := range a.GetEquipment().GetArmor() {
@@ -377,8 +357,6 @@ func (a *Actor) GetArmorDamageReduction() float64 {
 	armorClass := a.GetArmorClass()
 	return ADRFromAC(armorClass)
 }
-
-
 
 func (a *Actor) HealCompletely() {
 	a.GetStats().GetResource(stats.Health).SetToMax()
@@ -482,18 +460,6 @@ func (a *Actor) handleStatusEffects() {
 		}
 	}
 
-	//for _, effect := range a.parametrizedStatusEffects {
-	for i := len(a.parametrizedStatusEffects) - 1; i >= 0; i-- {
-		effect := a.parametrizedStatusEffects[i]
-		effect.NextTurn(a)
-		if effect.TurnsLeft() == 0 {
-			a.parametrizedStatusEffects = append(a.parametrizedStatusEffects[:i], a.parametrizedStatusEffects[i+1:]...)
-		}
-	}
-}
-
-func (a *Actor) AddParametrizedStatusEffect(effect *ParametrizedStatusEffect) {
-	a.parametrizedStatusEffects = append(a.parametrizedStatusEffects, effect)
 }
 
 func (a *Actor) HasSpeech(trigger defs.ActorSpeechTrigger) bool {
@@ -565,29 +531,6 @@ func (a *Actor) GetStatusEffects() *Flags {
 	return a.statusEffects
 }
 
-func (a *Actor) AddStatusEffect(effect StatusEffect, turnCount int) {
-	a.statusEffects.SetToValue(string(effect), turnCount)
-}
-func (a *Actor) HasStatusEffect(effect StatusEffect) bool {
-	return a.statusEffects.IsSet(string(effect))
-}
-
-func (a *Actor) SetTargetedSkills(skills []*TargetedAction) {
-	a.targetedSkills = skills
-}
-
-func (a *Actor) GetTargetedSkills() []*TargetedAction {
-	return a.targetedSkills
-}
-
-func (a *Actor) SetUntargetedSkills(skills []*UntargetedAction) {
-	a.untargetedSkills = skills
-}
-
-func (a *Actor) GetUntargetedSkills() []*UntargetedAction {
-	return a.untargetedSkills
-}
-
 func (a *Actor) VisionRange() int {
 	return a.stats.GetAttribute(stats.VisionRange)
 }
@@ -610,29 +553,11 @@ func (a *Actor) CanAutoMove() bool {
 	if !a.IsAlive() {
 		return false
 	}
-	if a.HasStatusEffect(StatusStunned) {
-		return false
-	}
-	if a.HasStatusEffect(StatusBerserk) {
-		return false
-	}
-	if a.HasStatusEffect(StatusConfused) {
-		return false
-	}
-	if a.HasStatusEffect(StatusImmobile) {
-		return false
-	}
 	return true
 }
 
 func (a *Actor) CanUseItems() bool {
 	if !a.IsAlive() {
-		return false
-	}
-	if a.HasStatusEffect(StatusStunned) {
-		return false
-	}
-	if a.HasStatusEffect(StatusBerserk) {
 		return false
 	}
 	return true
@@ -770,8 +695,6 @@ func (a *Actor) Clone() *Actor {
 		internalName:       a.internalName,
 		disableCorpse:      a.disableCorpse,
 		deathStringFormats: a.deathStringFormats,
-		targetedSkills:     a.targetedSkills,
-		untargetedSkills:   a.untargetedSkills,
 		corpseIcon:         a.corpseIcon,
 	}
 	// TODO equip weapons..
@@ -790,17 +713,8 @@ func (a *Actor) SetDamageDice(dice util.Dice) {
 	a.damageDice = dice
 }
 
-func (a *Actor) GetParametrizedStatusEffects() []*ParametrizedStatusEffect{
-	return a.parametrizedStatusEffects
-}
-
 func (a *Actor) IsVisible() bool {
-	return !a.HasStatusEffect(StatusInvisible)
-}
-
-func (a *Actor) GetRangedHitEffects() []*HitEffect{
-	// TODO
-	return []*HitEffect{}
+	return true
 }
 
 func (a *Actor) AsciiIcon(ticksForAnimation uint64) int32 {
@@ -845,10 +759,6 @@ func (a *Actor) GetColor() color.RGBA {
 		}
 	}
 	return a.color
-}
-
-func (a *Actor) IsWinCondition() bool {
-	return a.HasStatusEffect(StatusWinCondition)
 }
 
 func ADRFromAC(armorClass int) float64 {

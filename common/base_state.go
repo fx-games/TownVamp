@@ -22,21 +22,13 @@ type PlayerActions interface {
 	EquipItem(item *Item)
 	UnequipItem(item *Item)
 
-	ActivateUntargetedAction(action *UntargetedAction, source EffectSource)
-	BeginActionTargeting(element *TargetedAction)
-
 	StartAutoExplore()
 	StartPlayerAutoMovement(toTarget geometry.Point)
 	CancelAutoMove()
 
 	GetContextActionsForItem(item *Item) []util.MenuItem
 	PickUpItem()
-	AimedRangedAttack()
-	AimedThrow()
-	QuickRangedAttack()
 	RestUntilHealed()
-	AutoAttack()
-	ShowActorInfoAt(mapPos geometry.Point)
 }
 type State struct {
 	currentMap     *gridmap.GridMap[*Actor, *Item, Object]
@@ -61,8 +53,8 @@ type State struct {
 
 	config Configuration
 
-	factory *Factory
-	mapGen  *MapGenerator
+	factory      *Factory
+	randomSource *rand.Rand
 	// maps
 	ldtkProject *ldtk.Project
 
@@ -76,13 +68,7 @@ func (s *State) GetWorldTexture() renderer.TextureAtlas {
 func (s *State) GetPlayerStashInTown() *Inventory {
 	return s.playerStashInTown
 }
-func (s *State) GetCurrentDungeonLevel() int {
-	currentMapName := s.GetMap().GetName()
-	if defs.IsTownLevel(currentMapName) {
-		return 0
-	}
-	return LevelFromName(currentMapName)
-}
+
 func NewState(ldtkProject *ldtk.Project) State {
 
 	return State{
@@ -101,9 +87,24 @@ func (s *State) SetAnimator(animator Animator) {
 func (s *State) SetOnMapChanged(onMapChanged func(oldName, newName string)) {
 	s.onMapChanged = onMapChanged
 }
-func (s *State) SetMapGenerator(mapGen *MapGenerator) {
-	s.mapGen = mapGen
+
+// SetRandomSource makes world state reproducible from a seed. Without it the
+// package-level rand is used and a seeded run still differs between processes.
+//
+// ponytail: only the State's own draws are seeded. A few scattered rand.Intn
+// calls remain in actions that are on their way out; route them through here if
+// they survive.
+func (s *State) SetRandomSource(source *rand.Rand) {
+	s.randomSource = source
 }
+
+func (s *State) rng() *rand.Rand {
+	if s.randomSource == nil {
+		s.randomSource = rand.New(rand.NewSource(1))
+	}
+	return s.randomSource
+}
+
 func (s *State) GetVisibility() *Visibility {
 	return s.visibility
 }
@@ -143,8 +144,6 @@ func (s *State) IsReachableByPlayer(positionsOfInterest []geometry.Point) bool {
 	}
 	return true
 }
-
-
 
 func (s *State) GetMap() *gridmap.GridMap[*Actor, *Item, Object] {
 	return s.currentMap
@@ -224,10 +223,6 @@ func (s *State) GetFlags() *Flags {
 func (s *State) IsPlayerInTown() bool {
 	mapName := s.GetMap().GetName()
 	return defs.IsTownLevel(mapName)
-}
-
-func (s *State) isInHellTown() bool {
-	return s.GetMap().GetName() == string(defs.LevelNameTownHell)
 }
 
 func (s *State) PlayerStandsInLitArea() bool {
@@ -337,11 +332,8 @@ func (s *State) GetWaterColor() color.RGBA {
 	poisonColor := color.RGBA{R: 199, G: 251, B: 161, A: 255}
 	cleanColor := color.RGBA{R: 86, G: 112, B: 194, A: 255}
 
-	if s.GetFlags().IsSet(fmt.Sprintf("all_clear:%s", defs.SpecialLevelPoisonedWaterSupply)) {
-		return cleanColor
-	} else {
-		return poisonColor
-	}
+	_ = poisonColor
+	return cleanColor
 }
 
 func (s *State) IsDoorAt(pos geometry.Point) (*Door, bool) {
@@ -378,7 +370,7 @@ func (s *State) AddBloodDecalAt(mapPos geometry.Point) {
 		icon = existingDecal + 1
 	} else {
 		bloodDecals := []int32{defs.IconDecalBlood1, defs.IconDecalBlood2, defs.IconDecalBlood3, defs.IconDecalBlood4, defs.IconDecalBlood5}
-		icon = bloodDecals[rand.Intn(len(bloodDecals))]
+		icon = bloodDecals[s.rng().Intn(len(bloodDecals))]
 	}
 	currentMap.AddDecal(mapPos, icon)
 }
@@ -438,10 +430,7 @@ func (s *State) MapTransition(to gridmap.Transition) {
 	} else if s.HasDungeonMap(targetMap) {
 		s.SetCurrentMap(s.GetDungeonMap(targetMap))
 	} else {
-		// generate the map and set it
-		generatedMap := s.mapGen.GenerateMap(targetMap, s.ldtkProject, LevelFromName(targetMap))
-		s.SetDungeonMap(targetMap, generatedMap)
-		s.SetCurrentMap(generatedMap)
+		panic(fmt.Sprintf("no such map %q", targetMap))
 	}
 	newlyLoadedMap := s.GetMap()
 	newlyLoadedMap.SetCardinalMovementOnly(s.config.CardinalMovementOnly)
@@ -455,7 +444,7 @@ func (s *State) MapTransition(to gridmap.Transition) {
 		panic(fmt.Sprintf("no space for player at %v", targetLocation))
 	}
 
-	freeTargetLocation := freeTargetLocations[rand.Intn(len(freeTargetLocations))]
+	freeTargetLocation := freeTargetLocations[s.rng().Intn(len(freeTargetLocations))]
 	// add player to new map
 	player.SetDrawPosition(freeTargetLocation.ToPointF())
 	newlyLoadedMap.AddActor(player, freeTargetLocation)
@@ -489,57 +478,6 @@ func (s *State) SetTimeKeeper(keeper *TimeKeeper) {
 
 func (s *State) IsStoryModeEnabled() bool {
 	return s.GetFlags().IsSet(string(FlagStoryModeEnabled))
-}
-
-func (s *State) GetQuestLog(textParser func(string) []util.ColoredTextPart) []util.LabelText {
-	var entries []util.LabelText
-
-	flags := s.GetFlags()
-
-	flagPairs := []QuestFlags{
-		{"Kirioth (Town)", "Kill Meat Jack (Level 2 - Cathedral)", "quest_received:meat_jack", "killed:meat_jack", "quest_rewarded:meat_jack"},
-		{"Abel (Town)", "Clear the poisoned water (Catacombs)", "quest_received:poisoned_water", string("all_clear:" + defs.SpecialLevelPoisonedWaterSupply), "quest_rewarded:poisoned_water"},
-		{"Shekel (Town)", "Kill King Zedek (Level 4 - Catacombs)", "quest_received:skeleton_king", "killed:skeleton_king", "quest_rewarded:skeleton_king"},
-		{"Kirioth (Town)", "Kill Lucifer (Level 8 - Hell)", "quest_received:lucifer", "killed:lucifer", "quest_rewarded:lucifer"},
-
-		{"Lucifer (Hell)", "Find evidence (Town)", "quest_received:evidence_one", "found:evidence_one", "quest_rewarded:evidence_one"},
-		{"Lucifer (Hell)", "Find evidence (Catacombs)", "quest_received:evidence_two", "found:evidence_two", "quest_rewarded:evidence_two"},
-		{"Lucifer (Hell)", "Find evidence (Water Supply)", "quest_received:evidence_three", "found:evidence_three", "quest_rewarded:evidence_three"},
-		{"Lucifer (Hell)", "Find evidence (Caves)", "quest_received:evidence_four", "found:evidence_four", "quest_rewarded:evidence_four"},
-	}
-	//textParser := g.tileRenderer.ParseColorCodedText
-	// meat jack flags
-	for _, flagPair := range flagPairs {
-		questName := flagPair.Description
-		returnMessage := fmt.Sprintf("Return to %s", flagPair.Giver)
-		questGivenFlag := flagPair.GivenFlag
-		questDoneFlag := flagPair.RewardedFlag
-		if flags.IsSet(questGivenFlag) {
-			if flags.IsSet(questDoneFlag) {
-				entries = append(entries, util.LabelText{
-					UseColorCodes:      true,
-					TextWithColorCodes: textParser(fmt.Sprintf("%s - [:green]DONE", questName)),
-					Text:               fmt.Sprintf("%s - DONE", questName),
-					TextColor:          defs.DarkTextColor,
-				})
-			} else if flags.IsSet(flagPair.GoalFlag) {
-				entries = append(entries, util.LabelText{
-					UseColorCodes:      true,
-					TextWithColorCodes: textParser(fmt.Sprintf("%s - [:yellow]IN PROGRESS", returnMessage)),
-					Text:               fmt.Sprintf("%s - IN PROGRESS", returnMessage),
-					TextColor:          defs.DarkTextColor,
-				})
-			} else {
-				entries = append(entries, util.LabelText{
-					UseColorCodes:      true,
-					TextWithColorCodes: textParser(fmt.Sprintf("%s - [:yellow]IN PROGRESS", questName)),
-					Text:               fmt.Sprintf("%s - IN PROGRESS", questName),
-					TextColor:          defs.DarkTextColor,
-				})
-			}
-		}
-	}
-	return entries
 }
 
 func (s *State) RemoveObject(gameObject Object) {
@@ -578,9 +516,8 @@ func (s *State) GetAllPOIs() []geometry.Point {
 		cell := *mapCellRef
 		isStairs := cell.TileType.Special == gridmap.SpecialTileStairsUp || cell.TileType.Special == gridmap.SpecialTileStairsDown
 		isVendor := cell.Actor != nil && (*cell.Actor).IsVendor()
-		isWinCondition := cell.Actor != nil && (*cell.Actor).IsWinCondition()
 		isQuestItem := cell.Item != nil && (*cell.Item).IsQuestItem()
-		return isStairs || isVendor || isWinCondition || isQuestItem
+		return isStairs || isVendor || isQuestItem
 	})
 }
 func getDropPos(gameMap *gridmap.GridMap[*Actor, *Item, Object], actorPos geometry.Point) geometry.Point {

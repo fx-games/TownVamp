@@ -69,11 +69,6 @@ func (d NullUI) OpenTextWindow(msg []util.LabelText) {
 
 }
 
-func (d NullUI) CancelTargeting() {
-	//TODO implement me
-
-}
-
 func (d NullUI) ShowFullStats() {
 	//TODO implement me
 
@@ -104,22 +99,12 @@ func (d NullUI) Say(actor *common.Actor, linesOfText []string) {
 
 }
 
-func (d NullUI) BeginTargeting(rules common.TargetRules, onHit *common.HitEffect) {
-	//TODO implement me
-
-}
-
 func (d NullUI) OpenShopMenu(npc *common.Actor) {
 	//TODO implement me
 
 }
 
 func (d NullUI) BeginPlayerSellingTo(vendor *common.Actor) {
-	//TODO implement me
-
-}
-
-func (d NullUI) OpenTransferEnchantmentMenu() {
 	//TODO implement me
 
 }

@@ -3,8 +3,6 @@ package game
 import (
 	"cmp"
 	"fmt"
-	"github.com/flopp/go-findfont"
-	"image/color"
 	"math"
 	"math/rand"
 	"os"
@@ -22,7 +20,6 @@ import (
 	"strings"
 	"time"
 )
-
 
 type GameInstance struct {
 	// base infos / config
@@ -68,7 +65,6 @@ type GameInstance struct {
 
 	// data definitions
 	dataDefinitions defs.DataContainer
-
 
 	actions *Actions
 	factory *common.Factory
@@ -189,7 +185,8 @@ func NewGameInstance(startInfo common.StartInfo, uiController common.UserInterfa
 func (g *GameInstance) hasEnergyForAction(being common.TimedBeing) (int, func()) {
 	switch typedBeing := being.(type) {
 	case *common.Actor:
-		return g.getAIAction(typedBeing)
+		// Townspeople stand still until Schedules drive them.
+		return 0, nil
 	case Turner:
 		return g.getTurnerAction(being.GetBaseSpeed(), being.GetEnergy(), typedBeing)
 	}
@@ -252,6 +249,7 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	println(fmt.Sprintf("Timekeeper created.."))
 
 	g.state = common.NewState(ldtkProject)
+	g.state.SetRandomSource(g.randomSource)
 	g.state.SetPlayerMessage(g.PlayerMessage)
 	g.state.SetTimeKeeper(timeKeeper)
 	g.state.SelectedClass = playerStartDefinition
@@ -260,18 +258,7 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	g.actionBroker.RegisterHook(common.NewOnHealthChangedHook())
 
 	g.actionBroker.RegisterHook(common.NewMainOnMoveHook(g.configuration.AutoPickup)) // update fov, etc.
-	g.actionBroker.RegisterHook(common.NewMainOnMeleeHook())
-	g.actionBroker.RegisterHook(common.NewMainOnRangedHook())
 	g.actionBroker.RegisterHook(common.NewMainOnKillHook())
-	g.actionBroker.RegisterHook(common.NewOnDieHook("lucifer talking", func(itemContext *common.ItemContext, action common.Action, context common.ActionContext) []common.Action {
-		dieAction := action.(*common.DieAction)
-		dyingActor := dieAction.GetActor()
-		if dyingActor.GetInternalName() == "lucifer" {
-			g.onLuciferDeath()
-		}
-		return nil
-	}))
-
 	g.actionBroker.RegisterHook(common.NewMainOnDropHook())
 	g.actionBroker.RegisterHook(common.NewMainOnEquipHook())
 
@@ -281,12 +268,10 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 		State:                   g.GetWorldState(),
 		ActionBroker:            g.actionBroker,
 		GetTimeKeeper:           g.state.GetTimeKeeper,
-		GiveAndEquipItemToActor: g.giveAndEquipItemToActor,
 		Msg:                     g.PlayerMessage,
 	})
 	g.factory.SetUserInterface(g.GetUserInterface)
 	g.factory.SetQueueAfterTurn(g.queueAfterTurn)
-
 
 	g.state.SetPlayerMessage(g.PlayerMessage)
 	g.state.SetPlayerTurnHandler(g.onPlayerTurnTaken)
@@ -312,14 +297,6 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 		TargetMap:      string(defs.LevelNameTown),
 		TargetLocation: "spawn",
 	})
-
-	mapGen := common.NewMapGenerator(g.randomSource)
-	mapGen.SetFactory(g.factory)
-	mapGen.SetLdtkProject(ldtkProject)
-
-	// set references
-	g.state.SetMapGenerator(mapGen)
-
 
 	townSpawn := g.state.GetMap().GetNamedLocation("spawn")
 	g.state.SetTownSpawn(townSpawn)
@@ -400,11 +377,6 @@ func (g *GameInstance) GetUserInterface() common.UserInterface {
 	return g.uiController
 }
 
-func (g *GameInstance) spawnDebugItems() {
-	masterSword := NewMasterSword(g.GetWorldState())
-	g.spawnItem(geometry.Point{X: 15, Y: 10}, masterSword)
-}
-
 func (g *GameInstance) handleLightSource() {
 	player := g.state.GetPlayer()
 	if player.GetEquipment().HasLightSourceEquipped() && !g.state.PlayerStandsInLitArea() {
@@ -436,7 +408,6 @@ func (g *GameInstance) onPlayerTurnTaken(autUsed int) {
 
 	player.BeforeTurn()
 	g.handleLightSource()
-
 
 	// automatic pickup & player movement..
 	if g.configuration.AutoPickup && g.state.GetMap().IsItemAt(player.MapPosition()) {
@@ -475,17 +446,6 @@ func (g *GameInstance) createPlayer(playerStartDefinition defs.LoadoutDefinition
 	player.SetName("Player")
 	g.state.SetPlayer(player)
 
-	// Innate Skills
-	g.initPlayerSkills(player, playerStartDefinition.TargetedSkills, playerStartDefinition.UntargetedSkills)
-
-	// Starting gear
-	for _, itemName := range playerStartDefinition.Items {
-		item := g.factory.NewItemFromDefinitionName(itemName, 1)
-		if item != nil {
-			g.giveAndEquipItemToActor(player, item)
-		}
-	}
-
 	playerStats := player.GetStats()
 	for attr, value := range playerStartDefinition.Attributes {
 		playerStats.SetAttributeAsFloat(stats.StatFromString(attr), value)
@@ -517,187 +477,6 @@ func (g *GameInstance) GetWorldState() *common.State {
 	return &g.state
 }
 
-func (g *GameInstance) showDebugMenu() {
-	g.uiController.OpenMenu([]util.MenuItem{
-		{
-			MainText: "Toggle Debug Mode",
-			Action: func() {
-				g.debugModeEnabled = !g.debugModeEnabled
-			},
-		},
-		{
-			MainText: "Open class selection",
-			Action: func() {
-				g.uiController.OpenClassSelectionMenu()
-			},
-		},
-		{
-			MainText: "Drop to ASCII Mode",
-			Action: func() {
-				g.quitToAscii = true
-			},
-		},
-		{
-			MainText: "Map Info",
-			Action: func() {
-				g.uiController.OpenTextWindow(util.ToLabelText(g.state.GetMap().GetMetaString()))
-			},
-		},
-		{
-			MainText: "Put End-Game Gear into Stash",
-			Action: func() {
-				stash := g.state.GetPlayerStashInTown()
-				stash.Add(g.factory.NewUniqueItemFromName("veil_of_darkness"))
-				stash.Add(g.factory.NewUniqueItemFromName("plate_mail_of_the_dark_lord"))
-				stash.Add(g.factory.NewUniqueItemFromName("eternal_darkness"))
-				stash.Add(g.factory.NewUniqueItemFromName("never_ending_night"))
-				stash.Add(g.factory.NewUniqueItemFromName("ancient_nightmares_hood"))
-				stash.Add(g.factory.NewUniqueItemFromName("boots_of_the_shadow_dancer"))
-				stash.Add(g.factory.NewUniqueItemFromName("black_hands"))
-				stash.Add(g.factory.NewUniqueItemFromName("amulet_of_shadows"))
-				stash.Add(g.factory.NewUniqueItemFromName("shadows_embrace"))
-				stash.Add(g.factory.NewUniqueItemFromName("wall_of_thorns"))
-				stash.Add(g.factory.NewUniqueItemFromName("soul_reaver"))
-				stash.Add(g.factory.NewUniqueItemFromName("malleus_maleficarum"))
-				stash.Add(g.factory.NewUniqueItemFromName("light_morning_star"))
-			},
-		},
-		{
-			MainText: "Put Level 2 Gear into Stash",
-			Action: func() {
-				stash := g.state.GetPlayerStashInTown()
-				stash.Add(g.factory.NewItemFromDefinitionName("hard_leather_cap", 2))
-				stash.Add(g.factory.NewItemFromDefinitionName("partial_leather_armour", 2))
-				stash.Add(g.factory.NewItemFromDefinitionName("leather_gloves", 2))
-				stash.Add(g.factory.NewItemFromDefinitionName("leather_boots", 2))
-				stash.Add(g.factory.NewItemFromDefinitionName("cloak", 2))
-				stash.Add(g.factory.NewItemFromDefinitionName("small_leather_shield", 2))
-				stash.Add(g.factory.NewItemFromDefinitionName("long_bow", 2))
-			},
-		},
-		{
-			MainText: "Put Random Wands into Stash",
-			Action: func() {
-				stash := g.state.GetPlayerStashInTown()
-				for i := 0; i < 10; i++ {
-					stash.Add(g.factory.NewRandomWand(1))
-				}
-			},
-		},
-		{
-			MainText: "Enchant Stash to +10",
-			Action: func() {
-				stash := g.state.GetPlayerStashInTown()
-				for _, item := range stash.Items() {
-					gameItem := item
-					if item.IsWeapon() {
-						gameItem.GetWeaponStats().Plus = 10
-					}
-					if item.IsArmor() {
-						gameItem.GetArmorStats().Plus = 10
-					}
-				}
-			},
-		},
-		{
-			MainText: "Toggle UI Overlays", // should be an ui specific option
-			Action: func() {
-				if g.uiController.HasOverlays() {
-					//g.uiController.ClearAllOverlays()
-					//g.mapRenderer.OnScreenSizeChanged(g.GetDeviceIndependentScreenSize())
-				} else {
-					//g.setupUI()
-				}
-			},
-		},
-		{
-			MainText: "Debug Map Info",
-			Action: func() {
-				visibleMap := g.uiController.GetVisibleMap()
-				g.PlayerMessage(fmt.Sprintf("Visible map: (%d, %d) - (%d, %d)", visibleMap.Min.X, visibleMap.Min.Y, visibleMap.Max.X, visibleMap.Max.Y))
-			},
-		},
-		{
-			MainText: "Spawn Debug Items",
-			Action: func() {
-				g.spawnDebugItems()
-			},
-		},
-		{
-			MainText: "Test Font Loading",
-			Action: func() {
-				foundFonts := findfont.List()
-				for _, fontFile := range foundFonts {
-					if strings.HasSuffix(fontFile, ".ttf") {
-						g.PlayerMessage(fontFile)
-					}
-				}
-			},
-		},
-		{
-			MainText: "Trigger nightfall in town",
-			Action: func() {
-				g.state.GetFlags().SetTrue("town_changed_to_night")
-			},
-		},
-		{
-			MainText: "Trigger death of Lucifer",
-			Action: func() {
-				g.onLuciferDeath()
-			},
-		},
-		{
-			MainText: "Trigger completion of poisoned water supply",
-			Action: func() {
-				g.state.GetFlags().SetTrue(string("all_clear:" + defs.SpecialLevelPoisonedWaterSupply))
-			},
-		},
-		{
-			MainText: "Toggle Story Mode",
-			Action: func() {
-				newState := !g.state.IsStoryModeEnabled()
-				g.GetWorldState().GetFlags().Set(string(common.FlagStoryModeEnabled), newState)
-				if newState {
-					g.PlayerMessage("Story mode enabled")
-				} else {
-					g.PlayerMessage("Story mode disabled")
-				}
-			},
-		},
-		{
-			MainText: "Open Stash",
-			Action:   g.uiController.OpenPlayerStashInTown,
-		},
-		{
-			MainText: "give stuff",
-			Action: func() {
-				playerStats := g.state.GetPlayer().GetStats()
-				playerStats.SetAttribute(stats.MaxHealth, 10000)
-				playerStats.GetResource(stats.Health).Increase(10000)
-				playerStats.SetAttribute(stats.MaxMana, 10000)
-				playerStats.GetResource(stats.Mana).Increase(10000)
-				playerStats.SetAttribute(stats.Gold, 200000)
-
-				inv := g.state.GetPlayer().GetInventory()
-				for i := 0; i < 10; i++ {
-					inv.Add(g.factory.NewItemFromDefinitionName("healing_potion", 1))
-					inv.Add(g.factory.NewItemFromDefinitionName("mana_potion", 1))
-					inv.Add(g.factory.NewItemFromDefinitionName("speed_potion", 1))
-				}
-				g.uiController.UpdateStatsLabel()
-			},
-		},
-		{
-			MainText: "give 10k XP",
-			Action: func() {
-				playerStats := g.state.GetPlayer().GetStats()
-				playerStats.SetAttribute(stats.Experience, 10000)
-				g.uiController.UpdateStatsLabel()
-			},
-		},
-	})
-}
-
 func (g *GameInstance) killLevel() {
 	actorsOnMap := g.state.GetMap().Actors()
 	for i := len(actorsOnMap) - 1; i >= 0; i-- {
@@ -711,152 +490,6 @@ func (g *GameInstance) killLevel() {
 }
 
 // getAIAction returns the action to execute and the cost in AUT associated with it
-func (g *GameInstance) getAIAction(actor *common.Actor) (int, func()) {
-	autCostMove := 100 / actor.GetMoveSpeed()
-	autCostMeleeAttack := 100 / actor.GetAttackSpeed(common.MeleeAttack)
-	autCostRangedAttack := 100 / actor.GetAttackSpeed(common.RangedAttack)
-	minCostAttack := min(autCostMeleeAttack, autCostRangedAttack)
-
-	minCost := min(autCostMove, minCostAttack)
-	if actor.GetEnergy() < minCost { // don't act at all, conserve energy
-		return 0, nil
-	}
-	if actor.IsVendor() { // vendors just wait by default
-		return 10, func() {}
-	}
-
-	canAct := !actor.HasStatusEffect(common.StatusStunned)
-	if !canAct {
-		//println(fmt.Sprintf("%s is still unable to act. (Stunned)", actor.Name()))
-		return 10, func() {}
-	}
-
-	canMove := actor.GetEnergy() >= autCostMove && !actor.HasStatusEffect(common.StatusImmobile)
-	canAttack := actor.GetEnergy() >= minCostAttack && !actor.HasStatusEffect(common.StatusPacified)
-
-	if !canMove && !canAttack {
-		//println(fmt.Sprintf("%s can neither move nor attack. (Immobile & Pacified)", actor.Name()))
-		return 10, func() {}
-	}
-
-	isScared := actor.HasStatusEffect(common.StatusScared)
-	if isScared && canMove {
-		return autCostMove, func() {
-			targetPos := g.GetMoveAwayFromPlayer(actor.MapPosition())
-			if g.state.IsClosedDoorAt(targetPos) {
-				g.actionBroker.Execute(common.NewOpenDoorAction(common.AbstractCause("OpenDoor"), actor, targetPos))
-			}
-			g.actionBroker.Execute(common.NewMoveAction(common.AbstractCause("Movement"), actor, targetPos, false))
-		}
-	}
-
-	isConfused := actor.HasStatusEffect(common.StatusConfused)
-
-	if isConfused && canMove {
-		return autCostMove, func() {
-			possibleNeighbors := g.state.GetMap().GetFilteredNeighbors(actor.MapPosition(), func(point geometry.Point) bool {
-				return g.state.GetMap().IsWalkable(point)
-			})
-			if len(possibleNeighbors) == 0 {
-				return
-			}
-			randomNeighbor := possibleNeighbors[g.randomSource.Intn(len(possibleNeighbors))]
-			if g.state.IsClosedDoorAt(randomNeighbor) {
-				g.actionBroker.Execute(common.NewOpenDoorAction(common.AbstractCause("OpenDoor"), actor, randomNeighbor))
-			}
-			if g.state.GetMap().IsActorAt(randomNeighbor) {
-				actorAt := g.state.GetMap().ActorAt(randomNeighbor)
-				// attack
-				g.actionBroker.Execute(common.NewMeleeAttackAction(common.AbstractCause("MeleeAttack"), actor, actorAt))
-			} else {
-				g.actionBroker.Execute(common.NewMoveAction(common.AbstractCause("Movement"), actor, randomNeighbor, false))
-			}
-		}
-	}
-
-	// random movement for idle actors
-	if actor.GetState() == common.ActorStateIdle && canMove {
-		return autCostMove, func() {
-			freeNeighbor := g.state.GetMap().GetRandomFreeAndSafeNeighbor(g.randomSource, actor.MapPosition())
-			if freeNeighbor != actor.MapPosition() {
-				if g.state.IsClosedDoorAt(freeNeighbor) {
-					g.actionBroker.Execute(common.NewOpenDoorAction(common.AbstractCause("OpenDoor"), actor, freeNeighbor))
-				}
-				moveAction := common.NewMoveAction(common.AbstractCause("Movement"), actor, freeNeighbor, false)
-				if g.actions.IsPlayerAutoMoving() {
-					moveAction.DisableAnimation()
-				}
-				g.actionBroker.Execute(moveAction)
-			}
-		}
-	}
-
-	player := g.state.GetPlayer()
-	if actor.GetState() == common.ActorStateAttacking && player.IsAlive() {
-		// can use a skill?
-		playerPosition := player.MapPosition()
-
-		untargetedSkills := actor.GetUntargetedSkills()
-		if len(untargetedSkills) > 0 {
-			for _, skill := range untargetedSkills {
-				if !skill.CanActivate(actor) {
-					continue
-				}
-				skillUseChance := g.randomSource.Intn(10) == 0
-				if !skillUseChance {
-					continue
-				}
-				return skill.GetTimeNeededInAut(), func() {
-					skill.Invoke(actor, "ai_skill_usage")
-				}
-			}
-		}
-
-		targetedSkills := actor.GetTargetedSkills()
-		if len(targetedSkills) > 0 {
-			for _, skill := range targetedSkills {
-				skillUseChance := g.randomSource.Intn(10) == 0
-				if !skillUseChance {
-					continue
-				}
-				targetingRules := skill.GetTargetingRules(actor, g.GetWorldState().GetMap())
-				targetInfo := targetingRules.OnTargetChanged(playerPosition)
-				if !targetInfo.IsValid {
-					continue
-				}
-				return skill.GetTimeNeededInAut(), func() {
-					skill.Execute(actor, actor.MapPosition(), playerPosition)
-				}
-			}
-		}
-
-		canRangedAttack := actor.GetEnergy() >= autCostRangedAttack && actor.GetEquipment().HasRangedWeaponEquipped() && !actor.HasStatusEffect(common.StatusPacified)
-		canSeePlayer := actor.CanSee(playerPosition)
-		if canRangedAttack && canSeePlayer {
-			return autCostRangedAttack, func() {
-				g.actionBroker.Execute(common.NewRangedAttackAction(common.AbstractCause("RangedAttack"), actor, playerPosition))
-			}
-		}
-		var dist int
-		dist = g.state.GetMap().MoveDistance(actor.MapPosition(), playerPosition)
-		if dist <= 1 && canAttack {
-			return autCostMeleeAttack, func() {
-				g.actionBroker.Execute(common.NewMeleeAttackAction(common.AbstractCause("MeleeAttack"), actor, player))
-			}
-		} else if canMove {
-			return autCostMove, func() {
-				targetPos := g.GetMoveTowardsPlayer(actor.MapPosition())
-				if g.state.IsClosedDoorAt(targetPos) {
-					g.actionBroker.Execute(common.NewOpenDoorAction(common.AbstractCause("OpenDoor"), actor, targetPos))
-				}
-				g.actionBroker.Execute(common.NewMoveAction(common.AbstractCause("Movement"), actor, targetPos, false))
-			}
-		}
-	}
-
-	return 10, func() {}
-}
-
 func (g *GameInstance) TransferRandomEnchantment(source *common.Item, destination *common.Item) {
 	enchantments := source.GetAllEnchantments()
 
@@ -881,11 +514,6 @@ func (g *GameInstance) onMapChanged(oldMapName string, newMapName string) {
 			}
 			g.ensureVendorInventory(actor)
 		}
-		if newMapName == string(defs.LevelNameTown) {
-			g.setupTownTransitions(currentMap)
-		} else if newMapName == string(defs.LevelNameTownHell) {
-			g.setupHellTownTransitions(currentMap)
-		}
 	} else { // dungeon map
 		g.state.SetDungeonMap(newMapName, g.state.GetMap())
 	}
@@ -902,59 +530,6 @@ func (g *GameInstance) onMapChanged(oldMapName string, newMapName string) {
 	}
 }
 
-func (g *GameInstance) setupTownTransitions(currentMap *gridmap.GridMap[*common.Actor, *common.Item, common.Object]) {
-	entrancePos := currentMap.GetNamedLocation("to_cathedral")
-
-	entranceTile := currentMap.GetCell(entrancePos).TileType
-	currentMap.SetTile(entrancePos, entranceTile.WithSpecial(gridmap.SpecialTileStairsDown))
-
-	currentMap.AddTransitionAt(entrancePos, gridmap.Transition{
-		TargetMap:      defs.LevelNameFromDepth(1),
-		TargetLocation: "ladder_up",
-	})
-
-	entrancePos = currentMap.GetNamedLocation("to_catacombs")
-
-	entranceTile = currentMap.GetCell(entrancePos).TileType
-	currentMap.SetTile(entrancePos, entranceTile.WithSpecial(gridmap.SpecialTileStairsDown))
-
-	currentMap.AddTransitionAt(entrancePos, gridmap.Transition{
-		TargetMap:      defs.LevelNameFromDepth(4),
-		TargetLocation: "to_town",
-	})
-
-	entrancePos = currentMap.GetNamedLocation("to_caves")
-
-	entranceTile = currentMap.GetCell(entrancePos).TileType
-	currentMap.SetTile(entrancePos, entranceTile.WithSpecial(gridmap.SpecialTileStairsDown))
-
-	currentMap.AddTransitionAt(entrancePos, gridmap.Transition{
-		TargetMap:      defs.LevelNameFromDepth(6),
-		TargetLocation: "to_town",
-	})
-}
-func (g *GameInstance) setupHellTownTransitions(currentMap *gridmap.GridMap[*common.Actor, *common.Item, common.Object]) {
-	caveEntrace := currentMap.GetNamedLocation("to_caves")
-
-	entranceTile := currentMap.GetCell(caveEntrace).TileType
-	currentMap.SetTile(caveEntrace, entranceTile.WithSpecial(gridmap.SpecialTileStairsDown))
-
-	currentMap.AddTransitionAt(caveEntrace, gridmap.Transition{
-		TargetMap:      defs.LevelNameFromDepth(8),
-		TargetLocation: "to_hell_town",
-	})
-
-	dungeonEntrance := currentMap.GetNamedLocation("to_dungeon")
-	entranceTile = currentMap.GetCell(dungeonEntrance).TileType
-	currentMap.SetTile(dungeonEntrance, entranceTile.WithSpecial(gridmap.SpecialTileStairsDown))
-
-	currentMap.AddTransitionAt(dungeonEntrance, gridmap.Transition{
-		TargetMap:      defs.LevelNameFromDepth(9),
-		TargetLocation: "to_hell_town",
-	})
-
-}
-
 func (g *GameInstance) ensureVendorInventory(actor *common.Actor) {
 	inventory := actor.GetInventory()
 	if !inventory.IsEmpty() {
@@ -967,24 +542,11 @@ func (g *GameInstance) ensureVendorInventory(actor *common.Actor) {
 		return
 	}
 
-	inventoryItems = g.getVendorInventoryFromDefinition(definition)
+	_ = definition
 
 	for _, item := range inventoryItems {
 		inventory.Add(item)
 	}
-}
-
-func (g *GameInstance) initPlayerSkills(player *common.Actor, targetedSkills []string, untargetedSkills []string) {
-	var targeted []*common.TargetedAction
-	for _, skillName := range targetedSkills {
-		targeted = append(targeted, g.factory.NewTargetedActionFromName(skillName))
-	}
-	player.SetTargetedSkills(targeted)
-	var untargeted []*common.UntargetedAction
-	for _, skillName := range untargetedSkills {
-		untargeted = append(untargeted, g.factory.NewUntargetedActionFromName(skillName))
-	}
-	player.SetUntargetedSkills(untargeted)
 }
 
 type Turner interface {
@@ -1031,26 +593,6 @@ func (g *GameInstance) checkForLevelUp() {
 		return
 	}
 	g.GetAudio().PlayCue("levelup")
-}
-
-
-
-func (g *GameInstance) gotoHellTown() {
-	dest := gridmap.Transition{TargetMap: "TownHell", TargetLocation: "spawn"}
-	g.state.TransitionTo(dest)
-	g.actionBroker.Execute(common.NewEndPlayerTurnAction(common.AbstractCause("Travel"), 10))
-}
-
-func (g *GameInstance) onLuciferDeath() {
-	lines := []util.LabelText{
-		util.LabelTextFromStringWithColor("Lucifer", color.White),
-		util.LabelTextFromString(""),
-	}
-
-	luciferLines := append(lines, common.NewDialogueTextFromFile("lucifer_death.txt")...)
-	g.uiController.OpenTextWindow(luciferLines)
-
-	g.spawnItemInTown("true_sight_potion", g.NewPotionOfTrueSight())
 }
 
 func (g *GameInstance) sendStatsToWindowClient() {
@@ -1146,48 +688,6 @@ func (g *GameInstance) GetGameData() defs.DataContainer {
 	return g.dataDefinitions
 }
 
-func (g *GameInstance) GenerateLoot(dungeonLevel int, count int) []*common.Item {
-	var result []*common.Item
-	for i := 0; i < count; i++ {
-		result = append(result, g.factory.GenerateLoot(dungeonLevel))
-	}
-	return result
-}
-
-func (g *GameInstance) getVendorInventoryFromDefinition(definition defs.VendorDefinition) []*common.Item {
-	itemsNeeded := max(len(definition.Always), definition.ItemCount.LinearRandom())
-	sometimesCount := 0
-	alwaysCount := 0
-	if len(definition.Always) > 0 {
-		alwaysCount = min(itemsNeeded, len(definition.Always))
-	}
-	if len(definition.Sometimes) > 0 {
-		sometimesCount = max(1, itemsNeeded - alwaysCount)
-	}
-
-
-	var result []*common.Item
-
-	for i := 0; i < len(definition.Always); i++ {
-		// add all the always items at least once
-		dungeonLevel := max(1, g.randomSource.Intn(g.state.GetLastDungeonLevel()))
-		itemName := definition.Always[i]
-		item := g.factory.NewItemFromDefinitionName(itemName, dungeonLevel)
-		result = append(result, item)
-	}
-
-	for i := 0; i < sometimesCount; i++ {
-		// choose a random item
-		dungeonLevel := max(1, g.randomSource.Intn(g.state.GetLastDungeonLevel()))
-		randomIndex := g.randomSource.Intn(len(definition.Sometimes))
-		itemName := definition.Sometimes[randomIndex]
-		item := g.factory.NewItemFromDefinitionName(itemName, dungeonLevel)
-		result = append(result, item)
-	}
-
-	return result
-}
-
 func (g *GameInstance) GetActions() common.PlayerActions {
 	return g.actions
 }
@@ -1216,10 +716,6 @@ func (g *GameInstance) GetLog() []string {
 
 func (g *GameInstance) getDebugActions() common.DebugActions {
 	return common.DebugActions{
-		KillLevel:      g.killLevel,
-		GotoHellTown:   g.gotoHellTown,
-		OpenDebugMenu:  g.showDebugMenu,
-		GoOneLevelDown: g.actions.goOneLevelDown,
-		GoOneLevelUp:   g.actions.goOneLevelUp,
+		KillLevel: g.killLevel,
 	}
 }

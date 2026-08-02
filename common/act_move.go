@@ -121,11 +121,9 @@ func PlayerMoveToAttack(actor *Actor, relativeDirection geometry.Point, forceAtt
 	isTargetFree := !isActorAt && gameMap.IsWalkable(targetPos)
 	if isActorAt {
 		actorAtPos := gameMap.ActorAt(targetPos)
-		if actorAtPos.IsVendor() && !forceAttack {
-			return NewTalkToAction(NewActorCause("Talk to", actor), actorAtPos)
-		} else {
-			return NewMeleeAttackAction(NewActorCause("Melee attack", actor), actor, actorAtPos)
-		}
+		// Bumping into someone no longer attacks them; combat is gone.
+		_ = forceAttack
+		return NewTalkToAction(NewActorCause("Talk to", actor), actorAtPos)
 	} else if isTargetFree {
 		return NewMoveAction(NewActorCause("Move", actor), actor, targetPos, state.GetPlayer() == actor)
 	}

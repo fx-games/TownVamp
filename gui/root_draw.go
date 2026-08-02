@@ -22,12 +22,8 @@ func (u *UIController) Draw(screen *ebiten.Image) {
 	u.context.Animator().Draw(u.mapRenderer) // should be some "animator"
 
 	if !u.IsMouseCapturedByUI() {
-		if u.targeter != nil {
-			u.targeter.Draw(u.mapRenderer)
-		} else {
-			// default map selection rectangle
-			u.mapRenderer.DrawOnMap(u.mousePosOnMap, defs.IconTargeting, color.White)
-		}
+		// default map selection rectangle
+		u.mapRenderer.DrawOnMap(u.mousePosOnMap, defs.IconTargeting, color.White)
 	}
 
 	u.drawUI()
@@ -69,7 +65,7 @@ func (u *UIController) drawActors() {
 		if !visibleMapOnScreen.Contains(actor.MapPosition()) || !playerFieldOfView.Visible(actor.MapPosition()) {
 			continue
 		}
-		if !actor.IsVisible() && !player.HasStatusEffect(common.StatusSeeInvisible) {
+		if !actor.IsVisible() {
 			continue
 		}
 

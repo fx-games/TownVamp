@@ -214,19 +214,6 @@ func (e *Equipment) GetSlot(item *Item) defs.SlotName {
 	return defs.SlotNameNotEquippable
 }
 
-func (e *Equipment) HasThrowableQuivered() bool {
-	slot := e.GetBySlot(defs.SlotNameQuiver)
-	return slot != nil && slot.IsThrowable()
-}
-
-func (e *Equipment) GetNextQuiveredThrowable() *Item {
-	slot := e.GetBySlot(defs.SlotNameQuiver)
-	if slot == nil {
-		return nil
-	}
-	return slot
-}
-
 func (e *Equipment) HasWeaponEquipped() bool {
 	slot := e.GetBySlot(defs.SlotNameMainHand)
 	return slot != nil && slot.IsWeapon()

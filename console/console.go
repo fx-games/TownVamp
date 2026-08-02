@@ -168,10 +168,6 @@ func MaxLenWithoutColorCodes(text []string) int {
 	}
 	return maxLength
 }
-func (c *Console) CancelTargeting() {
-
-}
-
 func (c *Console) ShowFullStats() {
 	player := c.context.GameState().GetPlayer()
 	fullStats := player.GetFullStats()
@@ -223,10 +219,6 @@ func (c *Console) OpenClassSelectionMenu() {
 }
 
 func (c *Console) Say(actor *common.Actor, linesOfText []string) {
-
-}
-
-func (c *Console) BeginTargeting(rules common.TargetRules, onHit *common.HitEffect) {
 
 }
 
@@ -343,9 +335,6 @@ func (c *Console) BeginPlayerSellingTo(vendor *common.Actor) {
 
 }
 
-func (c *Console) OpenTransferEnchantmentMenu() {
-
-}
 func (c *Console) UpdateMiniMap() {
 
 }
@@ -410,8 +399,7 @@ func (c *Console) HandleInput() (terminationCode int) {
 			} else if typedRune == 'g' {
 				actions.PickUpItem()
 			} else if typedRune == 'S' {
-				c.OpenSkillsMenu()
-			} else if typedRune == 'C' {
+					} else if typedRune == 'C' {
 				c.ShowFullStats()
 			} else if typedRune == 'Q' {
 				c.screen.Clear()
@@ -419,9 +407,7 @@ func (c *Console) HandleInput() (terminationCode int) {
 				c.terminationCode = 1
 			} else if typedRune == 'o' {
 				actions.StartAutoExplore()
-			} else if typedEvent.Key() == tcell.KeyTab {
-				actions.AutoAttack()
-			} else if typedEvent.Key() == tcell.KeyF10 {
+						} else if typedEvent.Key() == tcell.KeyF10 {
 				c.context.DebugActions().OpenDebugMenu()
 			}
 		}
@@ -715,38 +701,6 @@ func (c *Console) showLog() {
 	}
 	c.openTextWindow(buffer)
 }
-func (c *Console) GetActiveSkillsForUI(player *common.Actor) []fmt.Stringer {
-	var activeSkills []fmt.Stringer
-	for _, skill := range player.GetTargetedSkills() {
-		activeSkills = append(activeSkills, skill)
-	}
-	for _, skill := range player.GetUntargetedSkills() {
-		activeSkills = append(activeSkills, skill)
-	}
-	return activeSkills
-}
-func (c *Console) OpenSkillsMenu() {
-	player := c.context.GameState().GetPlayer()
-	allSkills := c.GetActiveSkillsForUI(player)
-	var options []util.MenuItem
-	for _, s := range allSkills {
-		skill := s
-		options = append(options, util.MenuItem{
-			MainText: skill.String(),
-			Action: func() {
-				switch typedSkill := skill.(type) {
-				case *common.TargetedAction:
-					c.context.PlayerAction().BeginActionTargeting(typedSkill)
-				case *common.UntargetedAction:
-					c.context.PlayerAction().ActivateUntargetedAction(typedSkill, common.EffectSource("Player"))
-				}
-			},
-		})
-
-	}
-	c.OpenMenu(options)
-}
-
 func makeModal(p tview.Primitive, width, height int) tview.Primitive {
 	return tview.NewFlex().
 		AddItem(nil, 0, 1, false).
