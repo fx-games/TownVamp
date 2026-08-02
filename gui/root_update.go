@@ -51,6 +51,9 @@ func (u *UIController) Update() error {
 
 	u.handleKeyboardInput()
 
+	// One tick is one in-game second. This is the only clock.
+	u.context.AdvanceWorld(1.0)
+
 	u.context.Animator().Tick() // this is animations
 
 	if !player.IsAlive() {

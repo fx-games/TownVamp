@@ -4,6 +4,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"image/color"
+	"rpg/common"
 	"rpg/geometry"
 )
 
@@ -110,15 +111,8 @@ func (u *UIController) handleKeyboardInput() {
 		return
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyG) {
-		act.PickUpItem()
-	}
-
 	if inpututil.IsKeyJustPressed(ebiten.KeyL) {
 		u.ShowLog()
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyZ) {
-		act.RestUntilHealed()
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyX) {
 		u.mapRenderer.CenterOnFloat(u.context.GameState().GetPlayer().DrawPosition())
@@ -127,13 +121,14 @@ func (u *UIController) handleKeyboardInput() {
 		u.showFlags()
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyPeriod) {
-		act.EndTurn(10)
-		//g.actionBroker.Execute(actions.NewEndPlayerTurnAction(actions.NewActorCause("Wait", g.state.GetPlayer()), 10))
+	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
+		u.context.TogglePause()
 	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyI) {
-		u.OpenListInventory()
+	if inpututil.IsKeyJustPressed(ebiten.KeyPeriod) {
+		u.context.WaitUntil(common.WaitUntilDawn)
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyComma) {
+		u.context.WaitUntil(common.WaitUntilDusk)
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyC) {

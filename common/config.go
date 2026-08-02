@@ -33,13 +33,16 @@ type StartInfo struct {
     RandomSeed int64
 }
 
-
 type Configuration struct {
     AudioEnabled         bool
     ActorBobbingEnabled  bool
     WindowSize           geometry.Point
     DefaultFont          string
     DefaultFontSize      float64
+
+    // TimeMultiplier shortens the Day. 1 gives twenty-four real minutes, 2 gives
+    // twelve, 4 gives six. It scales the whole simulation, walking included.
+    TimeMultiplier       float64
     AutoPickup           bool
     CardinalMovementOnly bool
     KeepPlayerCentered   bool
@@ -85,6 +88,10 @@ func (c Configuration) ToRecord() recfile.Record {
 		{
 			Name:  "DefaultFontSize",
 			Value: recfile.FloatStr(c.DefaultFontSize),
+		},
+		{
+			Name:  "TimeMultiplier",
+			Value: recfile.FloatStr(c.TimeMultiplier),
 		},
 		{
 			Name:  "AutoPickup",
@@ -161,6 +168,7 @@ func NewConfigurationFromRecFile(recFilename string) Configuration {
 		CardinalMovementOnly:   configMap.GetBoolOrFalse("CardinalMovementOnly"),
 		DefaultFont:            configMap.GetStringOrDefault("DefaultFont", "assets/fonts/Ac437_EagleSpCGA_Alt3.ttf"),
 		DefaultFontSize:        configMap.GetFloatOrDefault("DefaultFontSize", 16.0),
+		TimeMultiplier:         configMap.GetFloatOrDefault("TimeMultiplier", 1.0),
 		AutoPickup:             configMap.GetBoolOrTrue("AutoPickup"),
 		KeepPlayerCentered:     configMap.GetBoolOrTrue("KeepPlayerCentered"),
 		DrawTilesBehindActors:  configMap.GetBoolOrFalse("DrawTilesBehindActors"),

@@ -102,7 +102,11 @@ func (a *Actions) ManualMovePlayer(direction geometry.Point) {
 		return
 	}
 	a.CancelAutoMove()
-	//g.actionBroker.CancelAllAnimations()
+
+	stepCost := 100 / player.GetMoveSpeed()
+	if player.GetEnergy() < stepCost {
+		return // not enough time has passed for another step
+	}
 
 	playerAction := common.PlayerMoveStep(player, direction, a.getActionContext())
 	if playerAction == nil {

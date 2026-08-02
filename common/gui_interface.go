@@ -6,6 +6,15 @@ import (
 )
 
 type UIContext struct {
+    // AdvanceWorld moves the simulation on by some number of in-game seconds.
+    // Called once per fixed update; the world does not wait for the player.
+    AdvanceWorld func(inGameSeconds float64)
+
+    // TogglePause stops the clock so the player can think. WaitUntil runs the
+    // simulation forward without drawing until a named moment arrives.
+    TogglePause func() bool
+    WaitUntil   func(condition WaitCondition)
+
     GameState    func() *State
     PlayerAction func() PlayerActions
     AudioPlayer  *audio.Player

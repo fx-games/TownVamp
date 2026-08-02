@@ -55,6 +55,8 @@ type State struct {
 
 	factory      *Factory
 	randomSource *rand.Rand
+	clock        *WorldClock
+	timeScale    float64
 	// maps
 	ldtkProject *ldtk.Project
 
@@ -234,8 +236,34 @@ func (s *State) PlayerStandsInLitArea() bool {
 func (s *State) PlayerCanSeeNeighbors() bool {
 	return s.GetPlayer().GetEquipment().HasLightSourceEquipped() || s.PlayerStandsInLitArea()
 }
+// GetClock is the town's time of day. Routines, Sunlight and the Day boundary
+// all read from it.
+func (s *State) GetClock() *WorldClock {
+	if s.clock == nil {
+		s.clock = NewWorldClock(DuskHour) // a run opens at dusk, when the vampire wakes
+	}
+	return s.clock
+}
+
+// SetTimeMultiplier shortens the Day. It scales the whole simulation — walking
+// included — so the town behaves identically at every setting and only the pace
+// differs. Scaling the calendar alone would leave Schedules unwalkable at the
+// faster settings and nowhere else.
+func (s *State) SetTimeMultiplier(multiplier float64) {
+	if multiplier > 0 {
+		s.timeScale = multiplier
+	}
+}
+
+func (s *State) GetTimeMultiplier() float64 {
+	if s.timeScale <= 0 {
+		s.timeScale = 1
+	}
+	return s.timeScale
+}
+
 func (s *State) IsDaylight() bool {
-	return s.IsPlayerInTown() && !s.GetFlags().IsSet("town_changed_to_night")
+	return s.GetClock().IsDaylight()
 }
 func (s *State) GetPlayerVisionRange() int {
 	actor := s.GetPlayer()
@@ -453,9 +481,6 @@ func (s *State) MapTransition(to gridmap.Transition) {
 		newlyLoadedMap.SetExplored(neighborOfStairs)
 	}
 	for _, actor := range newlyLoadedMap.Actors() {
-		if actor == player {
-			continue
-		}
 		actor.RemoveEnergy(actor.GetEnergy())
 		s.timekeeper.AddTimed(actor)
 	}

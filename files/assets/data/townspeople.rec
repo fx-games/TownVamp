@@ -1,0 +1,58 @@
+%rec: default
+#FIELDS: internal_name role identity routine
+#
+# One record per Townsperson. Everything here is data — no behaviour is
+# hard-coded anywhere.
+#
+#   role      one of: farmer smith builder trader authority
+#   identity  who they are beneath the Role. Never shown to the player; it is
+#             what their Private Actions are eventually written against.
+#   routine   HH:MM-HH:MM activity place, where place is "x,y" or the name of a
+#             location on the map. The Routine is the fixed part of the day and
+#             reacts to nothing. Hours it leaves free are spare capacity, which
+#             is what limits Reassignment later — so vary it deliberately.
+
+internal_name: shekel
+role: trader
+identity: keeps two sets of books and is frightened of the elder
+routine: 22:00-06:00 sleep 12,9
+routine: 06:00-07:00 meal 12,9
+routine: 07:00-19:00 trade 17,11
+routine: 19:00-22:00 home 12,9
+
+internal_name: abel
+role: builder
+identity: owes money he cannot repay and is drinking through the debt
+routine: 23:00-06:00 sleep 12,15
+routine: 06:00-07:00 meal 12,15
+routine: 08:00-17:00 build 25,20
+routine: 18:00-20:00 tavern 20,13
+
+internal_name: kirioth
+role: authority
+identity: has been quietly wrong about a judgement for years
+routine: 21:00-07:00 sleep 19,17
+routine: 07:00-09:00 meal 19,17
+routine: 09:00-18:00 court 30,13
+routine: 18:00-21:00 home 19,17
+
+internal_name: mary
+role: authority
+identity: hears everyone's confession and carries all of it alone
+routine: 01:00-06:00 sleep 33,18
+routine: 06:00-07:00 prayer 33,18
+routine: 07:00-12:00 chapel 33,18
+
+internal_name: hanno
+role: farmer
+identity: feeds two households besides his own and mentions it to no one
+routine: 21:00-05:00 sleep 40,13
+routine: 05:00-06:00 meal 40,13
+routine: 06:00-16:00 fields 47,13
+
+internal_name: greta
+role: smith
+identity: is the only one who knows who really started the fire
+routine: 22:00-06:00 sleep 17,5
+routine: 06:00-07:00 meal 17,5
+routine: 07:00-18:00 forge 20,6

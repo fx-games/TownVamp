@@ -56,6 +56,7 @@ type GameInstance struct {
 	isResting   bool
 
 	// game state
+	isPaused         bool
 	shouldQuitGame   bool
 	quitToAscii      bool
 	debugModeEnabled bool
@@ -185,8 +186,7 @@ func NewGameInstance(startInfo common.StartInfo, uiController common.UserInterfa
 func (g *GameInstance) hasEnergyForAction(being common.TimedBeing) (int, func()) {
 	switch typedBeing := being.(type) {
 	case *common.Actor:
-		// Townspeople stand still until Schedules drive them.
-		return 0, nil
+		return g.getScheduledAction(typedBeing)
 	case Turner:
 		return g.getTurnerAction(being.GetBaseSpeed(), being.GetEnergy(), typedBeing)
 	}
@@ -250,6 +250,7 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 
 	g.state = common.NewState(ldtkProject)
 	g.state.SetRandomSource(g.randomSource)
+	g.state.SetTimeMultiplier(g.configuration.TimeMultiplier)
 	g.state.SetPlayerMessage(g.PlayerMessage)
 	g.state.SetTimeKeeper(timeKeeper)
 	g.state.SelectedClass = playerStartDefinition
@@ -274,7 +275,7 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	g.factory.SetQueueAfterTurn(g.queueAfterTurn)
 
 	g.state.SetPlayerMessage(g.PlayerMessage)
-	g.state.SetPlayerTurnHandler(g.onPlayerTurnTaken)
+	g.state.SetPlayerTurnHandler(g.onPlayerActed)
 	g.state.SetAnimator(g.actionBroker)
 	g.state.SetActionBroker(g.actionBroker)
 	g.state.SetFactory(g.factory)
@@ -297,6 +298,7 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 		TargetMap:      string(defs.LevelNameTown),
 		TargetLocation: "spawn",
 	})
+	g.populateTown()
 
 	townSpawn := g.state.GetMap().GetNamedLocation("spawn")
 	g.state.SetTownSpawn(townSpawn)
@@ -385,44 +387,67 @@ func (g *GameInstance) handleLightSource() {
 		asGameItem.UseCharge()
 	}
 }
-// Advance moves the simulation forward by autUsed AUT. Today the only caller is
-// the end-of-turn action, so this still runs on the roguelike rule that the world
-// moves when the player does. Making it real-time is a matter of calling this from
-// the fixed-timestep update instead — see ADR 0001.
-func (g *GameInstance) Advance(autUsed int) {
-	g.onPlayerTurnTaken(autUsed)
-}
+// Advance moves the simulation forward by some number of in-game seconds. It is
+// called from the fixed-timestep update rather than from a player action, which
+// is the whole of the real-time conversion — see ADR 0001. One tick is one
+// in-game second at the default Time Multiplier, making a Day twenty-four
+// minutes of real time.
+func (g *GameInstance) Advance(inGameSeconds float64) {
+	if g.isPaused {
+		return
+	}
+	scaled := inGameSeconds * g.state.GetTimeMultiplier()
 
-func (g *GameInstance) onPlayerTurnTaken(autUsed int) {
-	player := g.state.GetPlayer()
+	daysPassed := g.state.GetClock().Advance(scaled)
+	g.state.GetTimeKeeper().AdvanceBySeconds(scaled)
 
-	g.state.GetTimeKeeper().PlayerTakesTurn(autUsed)
+	for i := 0; i < daysPassed; i++ {
+		g.onDayBoundary()
+	}
 
-	// execute after turn events, =?
 	for _, event := range g.executeAfterTurn {
 		event()
 	}
 	g.executeAfterTurn = make([]func(), 0)
 
-	g.checkForLevelUp()
-
-	player.BeforeTurn()
-	g.handleLightSource()
-
-	// automatic pickup & player movement..
-	if g.configuration.AutoPickup && g.state.GetMap().IsItemAt(player.MapPosition()) {
-		itemAtLocation := g.state.GetMap().ItemAt(player.MapPosition())
-		if itemAtLocation != nil && player.CanPickup() && !itemAtLocation.IsDroppedByPlayer() {
-			pickUpAction := common.NewPickUpAction(common.AbstractCause("AutoPickup"), player)
-			endTurnAction := common.NewEndPlayerTurnAction(pickUpAction.Cause(), pickUpAction.GetDelayInAut())
-			g.actionBroker.Execute(pickUpAction)
-			g.actionBroker.Execute(endTurnAction)
-		}
-	} else {
+	player := g.state.GetPlayer()
+	if player != nil && player.IsAlive() {
+		player.BeforeTurn()
+		g.handleLightSource()
 		g.actions.nextStepOnPlayerPath()
 	}
 
 	g.uiController.OnPlayerTurnTaken()
+}
+
+// onDayBoundary is where anything reckoned in whole Days happens: Absence
+// counting, and later the Reassignment of a vanished Townsperson's Obligations.
+func (g *GameInstance) onDayBoundary() {
+	g.PlayerMessage(g.state.GetClock().String())
+}
+
+func (g *GameInstance) SetPaused(paused bool) { g.isPaused = paused }
+func (g *GameInstance) IsPaused() bool        { return g.isPaused }
+func (g *GameInstance) TogglePause() bool {
+	g.isPaused = !g.isPaused
+	return g.isPaused
+}
+
+// onPlayerActed charges the player for something they chose to do. It no longer
+// moves the world; the world moves on its own.
+func (g *GameInstance) onPlayerActed(autUsed int) {
+	player := g.state.GetPlayer()
+	if player == nil {
+		return
+	}
+	player.RemoveEnergy(autUsed)
+
+	if g.configuration.AutoPickup && g.state.GetMap().IsItemAt(player.MapPosition()) {
+		itemAtLocation := g.state.GetMap().ItemAt(player.MapPosition())
+		if itemAtLocation != nil && player.CanPickup() && !itemAtLocation.IsDroppedByPlayer() {
+			g.actionBroker.Execute(common.NewPickUpAction(common.AbstractCause("AutoPickup"), player))
+		}
+	}
 }
 
 func (g *GameInstance) procFireAtLocation(location geometry.Point, startAnimating func() bool) {

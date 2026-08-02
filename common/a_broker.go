@@ -9,7 +9,6 @@ type Broker struct {
 	context            ActionContext
 }
 
-
 // NewBroker creates a new broker
 // AND will inject a reference to itself into the context
 func NewBroker(context ActionContext) *Broker {
@@ -45,15 +44,33 @@ func (d *Broker) Tick() {
 	d.checkForQueuedActions()
 }
 
+// checkForQueuedActions drains the queue when whoever it belongs to is free.
+//
+// This used to wait for *every* animation in the world to finish. That was safe
+// when one actor moved at a time, but with a whole town animating continuously
+// it is never true and the queue deadlocks. The queue only ever holds the
+// player's chained actions — auto-movement and resting — so the player's own
+// movement is the only thing worth waiting for.
 func (d *Broker) checkForQueuedActions() {
-	animationsRunning := len(d.runningAnimations) > 0 || len(d.movementAnimations) > 0
-	if !animationsRunning && len(d.queuedActions) > 0 {
+	if !d.isPlayerAnimating() && len(d.queuedActions) > 0 {
 		actions := d.queuedActions[0]
 		d.queuedActions = d.queuedActions[1:]
 		for _, action := range actions {
 			d.Execute(action)
 		}
 	}
+}
+
+func (d *Broker) isPlayerAnimating() bool {
+	if d.context.GameState == nil {
+		return len(d.movementAnimations) > 0
+	}
+	player := d.context.GameState.GetPlayer()
+	if player == nil {
+		return false
+	}
+	_, moving := d.movementAnimations[player]
+	return moving
 }
 
 func (d *Broker) Execute(action Action) {

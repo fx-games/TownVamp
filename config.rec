@@ -22,6 +22,7 @@ ServeInventory: true
 ServeEquipment: true
 DefaultFont: assets/fonts/Ac437_EagleSpCGA_Alt3.ttf
 DefaultFontSize: 16
+TimeMultiplier: 4
 WindowWidth: 1280
 WindowHeight: 800
 ItemNamesInShop: BandStyle

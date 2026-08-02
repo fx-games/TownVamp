@@ -1811,3 +1811,13 @@ type SprintTooInfo struct {
 	SprintEndPos   geometry.Point
 	EmptyTileFound bool
 }
+
+// GetNamedLocations exposes the map's named points. Routines are written against
+// these names rather than against coordinates.
+func (m *GridMap[ActorType, ItemType, ObjectType]) GetNamedLocations() map[string]geometry.Point {
+	locations := make(map[string]geometry.Point, len(m.namedLocations))
+	for name, pos := range m.namedLocations {
+		locations[name] = pos
+	}
+	return locations
+}

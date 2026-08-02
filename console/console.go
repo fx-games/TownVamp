@@ -423,7 +423,8 @@ func (c *Console) Update(dt float64) {
 
 	*/
 	//c.context.Animator().CancelAllAnimations()
-	c.context.Animator().Tick() // this is animations
+	c.context.AdvanceWorld(dt * 60.0) // dt is real seconds; one in-game minute per real second
+	c.context.Animator().Tick()       // this is animations
 	for _, actor := range c.context.GameState().GetMap().Actors() {
 		actor.Tick()
 	}

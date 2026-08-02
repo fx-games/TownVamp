@@ -154,6 +154,9 @@ func createGameAndUIContext() (*game.GameInstance, common.UIContext) {
 	}
 	theGame := game.NewGameInstance(startInfos, game.NewNullUI())
 	uiContext := common.UIContext{
+		AdvanceWorld: theGame.Advance,
+		TogglePause:  theGame.TogglePause,
+		WaitUntil:    theGame.WaitUntil,
 		GameState:    theGame.GetWorldState,
 		PlayerAction: theGame.GetActions,
 		AudioPlayer:  theGame.GetAudio(),

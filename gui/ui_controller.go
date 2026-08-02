@@ -1195,9 +1195,7 @@ func (u *UIController) UpdateStatsLabel() {
 	player := state.GetPlayer()
 	playerStats := player.GetStats()
 	var hpColor color.Color
-	var manaColor color.Color
 	hpColor = defs.DarkTextColor
-	manaColor = defs.DarkTextColor
 
 	if playerStats.GetResource(stats.Health).IsLessThanPercent(0.25) {
 		hpColor = color.RGBA{R: 255, G: 30, B: 30, A: 255}
@@ -1207,27 +1205,25 @@ func (u *UIController) UpdateStatsLabel() {
 		hpColor = color.RGBA{R: 255, G: 255, B: 30, A: 255}
 	}
 
-	if playerStats.GetResource(stats.Mana).IsLessThanPercent(0.25) {
-		manaColor = color.RGBA{R: 255, G: 30, B: 30, A: 255}
-	} else if playerStats.GetResource(stats.Mana).IsLessThanPercent(0.5) {
-		manaColor = color.RGBA{R: 255, G: 150, B: 30, A: 255}
-	} else if playerStats.GetResource(stats.Mana).IsLessThanPercent(0.75) {
-		manaColor = color.RGBA{R: 255, G: 255, B: 30, A: 255}
-	}
 	label := u.statsLabel
 	mapNameParts := util.ToLabelTextWithColor(strings.Split(state.GetMap().GetDisplayName(), "\n"), defs.DarkTextColor)
+	clock := state.GetClock()
+	timeOfDay := "night"
+	if clock.IsDaylight() {
+		timeOfDay = "day"
+	}
 	statusParts := []util.LabelText{
+		{
+			Text:      clock.String(),
+			TextColor: defs.DarkTextColor,
+		},
+		{
+			Text:      timeOfDay,
+			TextColor: defs.DarkTextColor,
+		},
 		{
 			Text:      fmt.Sprintf("HP: %s", playerStats.GetResource(stats.Health).ToString()),
 			TextColor: hpColor,
-		},
-		{
-			Text:      fmt.Sprintf("MP: %s", playerStats.GetResource(stats.Mana).ToString()),
-			TextColor: manaColor,
-		},
-		{
-			Text:      fmt.Sprintf("Gold: %d", playerStats.GetAttribute(stats.Gold)),
-			TextColor: defs.DarkTextColor,
 		},
 	}
 	statLines := append(mapNameParts, statusParts...)
@@ -1237,61 +1233,24 @@ func (u *UIController) UpdateStatsLabel() {
 }
 func (u *UIController) showHelpText() {
 	textColor := defs.DarkTextColor
-	var pickupText string
-	if u.configuration.AutoPickup {
-		pickupText = "Press 'g' to pick up items you dropped"
-	} else {
-		pickupText = "Press 'g' to pick up items"
+	lines := []string{
+		"You are a vampire, living unseen in this town.",
+		"",
+		"Arrow keys or numpad to move.",
+		"'space' to pause and unpause time.",
+		"'.' to wait until dawn, ',' to wait until dusk.",
+		"'x' to centre the view on yourself.",
+		"'l' to show the last lines of the message log.",
+		"'c' to show your stats.",
+		"'m' and 'n' to zoom the map.",
+		"'esc' to open the menu.",
+		"",
+		"Time passes on its own. The townspeople keep their own hours",
+		"whether or not you are watching.",
 	}
-	u.OpenTextWindow([]util.LabelText{
-		{
-			Text:      "Welcome to heaven and hell!",
-			TextColor: textColor,
-		},
-		{Text: "", TextColor: textColor},
-		{
-			Text:      "Use the 'w/a/s/d' keys or Numpad to move around",
-			TextColor: textColor,
-		},
-		{
-			Text:      "Bump into stuff and people to interact with them or attack them",
-			TextColor: textColor,
-		},
-		{Text: "", TextColor: textColor},
-		{
-			Text:      "Press 'q' to quickly fire at the nearest enemy with your ranged weapon",
-			TextColor: textColor,
-		},
-		{
-			Text:      "Press 'f' to aim at a specific enemy with your ranged weapon",
-			TextColor: textColor,
-		},
-		{
-			Text:      "Press 'o' to auto-explore",
-			TextColor: textColor,
-		},
-		{
-			Text:      "Press 'tab' to auto-attack the nearest enemy using your equipped weapon",
-			TextColor: textColor,
-		},
-		{
-			Text:      "Press 'i' to open your inventory",
-			TextColor: textColor,
-		},
-		{
-			Text:      "Press 'c' to show your stats",
-			TextColor: textColor,
-		},
-		{
-			Text:      pickupText,
-			TextColor: textColor,
-		},
-		{
-			Text:      "Press 'l' to show the last lines of the message log",
-			TextColor: textColor,
-		},
-	})
+	u.OpenTextWindow(util.ToLabelTextWithColor(lines, textColor))
 }
+
 func (u *UIController) ShowLog() {
 	buffer := u.context.GetLog()
 	if len(buffer) > 20 {

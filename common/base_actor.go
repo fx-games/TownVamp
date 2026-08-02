@@ -53,6 +53,7 @@ type Actor struct {
 	disableCorpse      bool
 	deathStringFormats []string
 	damageDice         util.Dice
+	townsperson        *Townsperson
 	color              color.RGBA
 }
 
@@ -763,4 +764,18 @@ func (a *Actor) GetColor() color.RGBA {
 
 func ADRFromAC(armorClass int) float64 {
 	return util.Clamp(0.0, 0.9, (float64(armorClass)/float64(armorClass+20))*1.5)
+}
+
+// SetTownsperson makes this actor an inhabitant of the town, with a Role and a
+// Routine. Actors without one — the player — simply have no Schedule to follow.
+func (a *Actor) SetTownsperson(person *Townsperson) {
+	a.townsperson = person
+}
+
+func (a *Actor) GetTownsperson() *Townsperson {
+	return a.townsperson
+}
+
+func (a *Actor) IsTownsperson() bool {
+	return a.townsperson != nil
 }

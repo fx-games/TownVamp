@@ -8,18 +8,26 @@ type TimedBeing interface {
 	GetEnergy() int
 }
 
+// SecondsPerAut fixes what an AUT is worth on the wall clock, which is what
+// finally decides how fast anyone walks. A step costs 10 AUT, so at six seconds
+// per AUT a Townsperson covers one tile per in-game minute — about a minute to
+// cross a room, an hour to cross the town. Schedules are only achievable if this
+// and the distances on the map agree, so expect to tune it against the real town.
+const SecondsPerAut = 6.0
+
 type TimeKeeper struct {
 	autCounter         uint64
-	turnCounter        uint64
 	timed              []TimedBeing
 	hasEnergyForAction func(being TimedBeing) (int, func())
 	onRemoveTimed      func(thing TimedBeing)
+
+	// Time arrives in fractions of an AUT — a tick is one in-game second, an AUT
+	// is six — while energy is whole numbers. The remainder is carried here.
+	pendingAut float64
 }
 
 func NewTimeKeeper(hasEnergyForAction func(being TimedBeing) (int, func())) *TimeKeeper {
 	return &TimeKeeper{
-		autCounter:         0,
-		turnCounter:        0,
 		timed:              make([]TimedBeing, 0),
 		hasEnergyForAction: hasEnergyForAction,
 	}
@@ -28,42 +36,50 @@ func NewTimeKeeper(hasEnergyForAction func(being TimedBeing) (int, func())) *Tim
 func (t *TimeKeeper) SetTimed(timedBeings []TimedBeing) {
 	t.timed = timedBeings
 }
-func (t *TimeKeeper) PlayerTakesTurn(playerAutUsed int) {
-	t.autCounter += uint64(playerAutUsed)
-	t.turnCounter++
-	//println(fmt.Sprintf("Player takes turn %d using %d aut", t.turnCounter, playerAutUsed))
-	//for _, actor := range t.timed {
-	// PROBLEM: We are technically doing a recursive call of this function here.
-	// Each time an after hook executes during our turn that then triggers another turn..
 
-	// PROBLEM: Delayed teleport will trigger during this loop and a map change will occur,
-	// which in turn will overwrite the list we are currently iterating over.
+// AdvanceBySeconds moves the world forward by some number of in-game seconds.
+// This is the only clock: it runs from the fixed-timestep update, not from a
+// player action, so the town keeps moving whether or not the player does.
+func (t *TimeKeeper) AdvanceBySeconds(inGameSeconds float64) {
+	t.pendingAut += inGameSeconds / SecondsPerAut
+	wholeAut := int(t.pendingAut)
+	if wholeAut <= 0 {
+		return
+	}
+	t.pendingAut -= float64(wholeAut)
+	t.advance(wholeAut)
+}
 
-	// The solution, the map change should be queued and executed after the turn is over.
-	// Hmmm... This should also occur when something dies, or when something is spawned.
-	// Nope, death won't remove things from the list directly.. we do it here in the loop.
-	// Any other events that could potentially change the list of active beings?
+func (t *TimeKeeper) advance(autElapsed int) {
+	t.autCounter += uint64(autElapsed)
 
+	// Iterated backwards so that a being dying mid-loop can be removed without
+	// disturbing the indices still to be visited.
 	for i := len(t.timed) - 1; i >= 0; i-- {
+		if i >= len(t.timed) {
+			continue
+		}
 		timedBeing := t.timed[i]
 		if !timedBeing.IsAlive() {
 			t.removeAtIndex(i)
 			continue
 		}
-		addedEnergy := int((float64(playerAutUsed) / 10.0) * float64(timedBeing.GetBaseSpeed()))
+		addedEnergy := int((float64(autElapsed) / 10.0) * float64(timedBeing.GetBaseSpeed()))
 		timedBeing.AddEnergy(addedEnergy)
-		for energyUsed, action := t.hasEnergyForAction(timedBeing); // init
-		timedBeing.IsAlive() && action != nil; // condition
-		energyUsed, action = t.hasEnergyForAction(timedBeing) { // executed after each iteration
-			timedBeing.RemoveEnergy(energyUsed) // this does update status effects, such as poison, thus could kill the being..
-			if timedBeing.IsAlive() {
-				action()
-			} else {
+		for energyUsed, action := t.hasEnergyForAction(timedBeing); timedBeing.IsAlive() && action != nil; energyUsed, action = t.hasEnergyForAction(timedBeing) {
+			timedBeing.RemoveEnergy(energyUsed)
+			if !timedBeing.IsAlive() {
 				t.removeAtIndex(i)
 				break
 			}
+			action()
 		}
 	}
+}
+
+// ElapsedAut is the total simulated time since the run began.
+func (t *TimeKeeper) ElapsedAut() uint64 {
+	return t.autCounter
 }
 
 func (t *TimeKeeper) AddTimed(actor TimedBeing) {
@@ -77,9 +93,11 @@ func (t *TimeKeeper) removeAtIndex(i int) {
 		t.onRemoveTimed(timedBeing)
 	}
 }
+
 func (t *TimeKeeper) SetOnRemoveTimed(onRemoveTimed func(thing TimedBeing)) {
 	t.onRemoveTimed = onRemoveTimed
 }
+
 func (t *TimeKeeper) ClearTrackedBeings(shouldRemoveBeing func(being TimedBeing) bool) []TimedBeing {
 	var removed []TimedBeing
 	for i := len(t.timed) - 1; i >= 0; i-- {
