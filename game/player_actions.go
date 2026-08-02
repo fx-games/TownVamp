@@ -104,7 +104,7 @@ func (a *Actions) ManualMovePlayer(direction geometry.Point) {
 	a.CancelAutoMove()
 	//g.actionBroker.CancelAllAnimations()
 
-	playerAction := common.PlayerMoveToAttack(player, direction, a.ui().IsPlayerForcingAggression(), a.getActionContext())
+	playerAction := common.PlayerMoveStep(player, direction, a.getActionContext())
 	if playerAction == nil {
 		return
 	}

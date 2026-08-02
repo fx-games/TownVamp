@@ -117,9 +117,6 @@ func (u *UIController) handleKeyboardInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyL) {
 		u.ShowLog()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
-		u.showJournal()
-	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyZ) {
 		act.RestUntilHealed()
 	}
@@ -145,9 +142,6 @@ func (u *UIController) handleKeyboardInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
 		u.context.DebugActions().KillLevel()
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyH) {
-		u.context.DebugActions().GotoHellTown()
-	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyF8) {
 		u.renderingMode = (u.renderingMode + 1) % 3
 		u.configuration.FlipActorsHorizontally = u.renderingMode == GraphicRendering
@@ -155,10 +149,6 @@ func (u *UIController) handleKeyboardInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeyF9) {
 		u.disableFogOfWar = !u.disableFogOfWar
 	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyF10) {
-		u.context.DebugActions().OpenDebugMenu()
-	}
-
 	if inpututil.IsKeyJustPressed(ebiten.KeyF11) {
 		u.isFullScreen = !ebiten.IsFullscreen()
 		ebiten.SetFullscreen(u.isFullScreen)
@@ -173,27 +163,8 @@ func (u *UIController) handleKeyboardInput() {
 		//g.actionBroker.Execute(common.NewEndPlayerTurnAction(common.AbstractCause("Travel"), 10))
 	}
 
-	if inpututil.IsKeyJustPressed(ebiten.KeyU) {
-		/*
-			level := g.getCurrentDungeonLevel()
-			g.transitionTo(gridmap.Transition{
-				TargetMap:      defs.LevelNameFromDepth(level + 1),
-				TargetLocation: "ladder_up",
-			})
-			g.actionBroker.Execute(common.NewEndPlayerTurnAction(common.AbstractCause("Travel"), 10))
-
-		*/
-	}
-
 	if inpututil.IsKeyJustPressed(ebiten.KeyO) {
 		act.StartAutoExplore()
-	}
-
-	if inpututil.IsKeyJustPressed(ebiten.KeyJ) {
-		u.context.DebugActions().GoOneLevelUp()
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyK) {
-		u.context.DebugActions().GoOneLevelDown()
 	}
 
 	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {

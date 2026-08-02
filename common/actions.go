@@ -40,17 +40,12 @@ type Animator interface {
 	Draw(renderer TileRenderer)
 }
 type DebugActions struct {
-	KillLevel      func()
-	GotoHellTown   func()
-	OpenDebugMenu  func()
-	GoOneLevelDown func()
-	GoOneLevelUp   func()
+	KillLevel func()
 }
 
 type UserInterface interface {
 	// Queries
 	GetVisibleMap() geometry.Rect
-	IsPlayerForcingAggression() bool
 	HasOverlays() bool
 
 	// Features ParseColorCodedText(colorCodedText string) []util.ColoredTextPart

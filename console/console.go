@@ -43,10 +43,6 @@ func (c *Console) GetVisibleMap() geometry.Rect {
 	return geometry.Rect{}
 }
 
-func (c *Console) IsPlayerForcingAggression() bool {
-	return false
-}
-
 func (c *Console) HasOverlays() bool {
 	return false
 }
@@ -398,8 +394,7 @@ func (c *Console) HandleInput() (terminationCode int) {
 				c.OpenListInventoryForDropping()
 			} else if typedRune == 'g' {
 				actions.PickUpItem()
-			} else if typedRune == 'S' {
-					} else if typedRune == 'C' {
+			} else if typedRune == 'C' {
 				c.ShowFullStats()
 			} else if typedRune == 'Q' {
 				c.screen.Clear()
@@ -407,8 +402,6 @@ func (c *Console) HandleInput() (terminationCode int) {
 				c.terminationCode = 1
 			} else if typedRune == 'o' {
 				actions.StartAutoExplore()
-						} else if typedEvent.Key() == tcell.KeyF10 {
-				c.context.DebugActions().OpenDebugMenu()
 			}
 		}
 	}

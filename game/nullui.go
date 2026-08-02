@@ -29,11 +29,6 @@ func (d NullUI) GetVisibleMap() geometry.Rect {
 	return geometry.NewRect(0, 0, 0, 0)
 }
 
-func (d NullUI) IsPlayerForcingAggression() bool {
-	//TODO implement me
-	return false
-}
-
 func (d NullUI) HasOverlays() bool {
 	//TODO implement me
 	return true

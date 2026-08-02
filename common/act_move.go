@@ -102,7 +102,10 @@ func (d *MoveAction) DisableAnimation() {
 	d.animationDisabled = true
 }
 
-func PlayerMoveToAttack(actor *Actor, relativeDirection geometry.Point, forceAttack bool, context ActionContext) Action {
+// PlayerMoveStep resolves a step in one direction into whatever it means where
+// the player is standing: opening a door, bumping an object, talking to a vendor,
+// or moving. Bumping someone no longer attacks them.
+func PlayerMoveStep(actor *Actor, relativeDirection geometry.Point, context ActionContext) Action {
 	state := context.GameState
 	gameMap := state.GetMap()
 	targetPos := actor.MapPosition().Add(relativeDirection)
@@ -121,9 +124,10 @@ func PlayerMoveToAttack(actor *Actor, relativeDirection geometry.Point, forceAtt
 	isTargetFree := !isActorAt && gameMap.IsWalkable(targetPos)
 	if isActorAt {
 		actorAtPos := gameMap.ActorAt(targetPos)
-		// Bumping into someone no longer attacks them; combat is gone.
-		_ = forceAttack
-		return NewTalkToAction(NewActorCause("Talk to", actor), actorAtPos)
+		if actorAtPos.IsVendor() {
+			return NewTalkToAction(NewActorCause("Talk to", actor), actorAtPos)
+		}
+		return nil
 	} else if isTargetFree {
 		return NewMoveAction(NewActorCause("Move", actor), actor, targetPos, state.GetPlayer() == actor)
 	}

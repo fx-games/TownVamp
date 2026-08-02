@@ -573,10 +573,3 @@ const (
 	FlagStoryModeEnabled FlagName = "story_mode_enabled"
 )
 
-type QuestFlags struct {
-	Giver        string
-	Description  string
-	GivenFlag    string
-	GoalFlag     string
-	RewardedFlag string
-}

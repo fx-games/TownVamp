@@ -143,10 +143,6 @@ func (u *UIController) SetDebugActions(actions func() common.DebugActions) {
 	u.context.DebugActions = actions
 }
 
-func (u *UIController) IsPlayerForcingAggression() bool {
-	return u.shiftIsBeingPressedThisTick
-}
-
 func (u *UIController) Say(actor *common.Actor, lines []string) {
 	// TODO
 }
@@ -1294,10 +1290,6 @@ func (u *UIController) showHelpText() {
 			Text:      "Press 'l' to show the last lines of the message log",
 			TextColor: textColor,
 		},
-		{
-			Text:      "Press 'v' to show the quest log",
-			TextColor: textColor,
-		},
 	})
 }
 func (u *UIController) ShowLog() {
@@ -1470,14 +1462,6 @@ func (u *UIController) tryToBuy(item *common.Item, seller *common.Actor) {
 
 	msg(fmt.Sprintf("You bought [:darkText]%s[:white] for [:darkText]%d[:white] gold", item.Name(), cost))
 	u.OpenShopMenu(seller)
-}
-
-func (u *UIController) showJournal() {
-	state := u.context.GameState()
-	if !state.IsStoryModeEnabled() {
-		return
-	}
-
 }
 
 func (u *UIController) showFlags() {
