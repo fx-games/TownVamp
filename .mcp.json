@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "ldtk": {
+      "command": "/Users/felix/Projects/ldtk-mcp/target/release/ldtk-mcp"
+    }
+  }
+}
