@@ -53,7 +53,7 @@ type GameInstance struct {
 	serverLog       *TextServer
 
 	// player state
-	isResting   bool
+	isResting bool
 
 	// game state
 	isPaused         bool
@@ -74,6 +74,13 @@ type GameInstance struct {
 	// tick the Townsperson stands there. Cleared at the Day boundary.
 	announcedToday   map[string]bool
 	unmetObligations []*common.Obligation
+
+	// The vampire, the town's inhabitants, and where the bodies are.
+	blood           *common.Blood
+	townspeople     []*common.Townsperson
+	bodies          map[string]geometry.Point
+	ending          RunEnding
+	warnedAboutDawn bool
 
 	logHook     func(string)
 	logBuffer   []string
@@ -256,6 +263,10 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	g.state = common.NewState(ldtkProject)
 	g.announcedToday = make(map[string]bool)
 	g.unmetObligations = nil
+	g.blood = common.NewBlood()
+	g.townspeople = nil
+	g.bodies = make(map[string]geometry.Point)
+	g.ending = RunOngoing
 	g.state.SetRandomSource(g.randomSource)
 	g.state.SetTimeMultiplier(g.configuration.TimeMultiplier)
 	g.state.SetPlayerMessage(g.PlayerMessage)
@@ -271,12 +282,12 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	g.actionBroker.RegisterHook(common.NewMainOnEquipHook())
 
 	g.factory = common.NewFactory(common.FactoryContext{
-		Definitions:             g.dataDefinitions,
-		RandomSource:            g.randomSource,
-		State:                   g.GetWorldState(),
-		ActionBroker:            g.actionBroker,
-		GetTimeKeeper:           g.state.GetTimeKeeper,
-		Msg:                     g.PlayerMessage,
+		Definitions:   g.dataDefinitions,
+		RandomSource:  g.randomSource,
+		State:         g.GetWorldState(),
+		ActionBroker:  g.actionBroker,
+		GetTimeKeeper: g.state.GetTimeKeeper,
+		Msg:           g.PlayerMessage,
 	})
 	g.factory.SetUserInterface(g.GetUserInterface)
 	g.factory.SetQueueAfterTurn(g.queueAfterTurn)
@@ -289,15 +300,15 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 
 	g.createPlayer(playerStartDefinition)
 	g.actions = NewActions(PlayerActionsContext{
-		Player:        g.state.GetPlayer(),
-		ActionBroker:  g.actionBroker,
-		State:         g.GetWorldState(),
-		UI:            g.GetUserInterface,
-		GetTimeKeeper: g.state.GetTimeKeeper,
-		Msg:           g.PlayerMessage,
-		Animator:      g.actionBroker,
-		Speak:         g.ActorSpeak,
-		Configuration: g.configuration,
+		Player:         g.state.GetPlayer(),
+		ActionBroker:   g.actionBroker,
+		State:          g.GetWorldState(),
+		UI:             g.GetUserInterface,
+		GetTimeKeeper:  g.state.GetTimeKeeper,
+		Msg:            g.PlayerMessage,
+		Animator:       g.actionBroker,
+		Speak:          g.ActorSpeak,
+		Configuration:  g.configuration,
 		QueueAfterTurn: g.queueAfterTurn,
 	})
 	g.state.SetOnMapChanged(g.onMapChanged)
@@ -394,6 +405,7 @@ func (g *GameInstance) handleLightSource() {
 		asGameItem.UseCharge()
 	}
 }
+
 // Advance moves the simulation forward by some number of in-game seconds. It is
 // called from the fixed-timestep update rather than from a player action, which
 // is the whole of the real-time conversion — see ADR 0001. One tick is one
@@ -407,6 +419,7 @@ func (g *GameInstance) Advance(inGameSeconds float64) {
 
 	daysPassed := g.state.GetClock().Advance(scaled)
 	g.state.GetTimeKeeper().AdvanceBySeconds(scaled)
+	g.tickVampire(scaled)
 
 	for i := 0; i < daysPassed; i++ {
 		g.onDayBoundary()
@@ -432,6 +445,8 @@ func (g *GameInstance) Advance(inGameSeconds float64) {
 // Reassignment will hang.
 func (g *GameInstance) onDayBoundary() {
 	g.announcedToday = make(map[string]bool)
+
+	g.reassignVoidedObligations()
 
 	for _, actor := range g.state.GetMap().Actors() {
 		if person := actor.GetTownsperson(); person != nil {

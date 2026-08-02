@@ -1212,9 +1212,19 @@ func (u *UIController) UpdateStatsLabel() {
 	if clock.IsDaylight() {
 		timeOfDay = "day"
 	}
+	bloodText := ""
+	if u.context.Blood != nil {
+		if blood := u.context.Blood(); blood != nil {
+			bloodText = blood.String()
+		}
+	}
 	statusParts := []util.LabelText{
 		{
 			Text:      clock.String(),
+			TextColor: defs.DarkTextColor,
+		},
+		{
+			Text:      bloodText,
 			TextColor: defs.DarkTextColor,
 		},
 		{
@@ -1239,6 +1249,8 @@ func (u *UIController) showHelpText() {
 		"Arrow keys or numpad to move.",
 		"'space' to pause and unpause time.",
 		"'.' to wait until dawn, ',' to wait until dusk.",
+		"'e' to drain someone standing next to you.",
+		"'h' to hide a body you are standing over.",
 		"'x' to centre the view on yourself.",
 		"'l' to show the last lines of the message log.",
 		"'c' to show your stats.",

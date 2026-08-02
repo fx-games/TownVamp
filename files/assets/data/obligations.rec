@@ -26,7 +26,7 @@ role: farmer
 at: 33,18
 window: 16:00-17:00
 performed: leaves a covered basket at the chapel door
-absent: the chapel step is bare and the door stays shut
+absent: The chapel step is bare and the door stays shut
 
 id: water_for_the_east_quarter
 owner: hanno
@@ -34,7 +34,7 @@ role: farmer
 at: 47,13
 window: 17:00-18:00
 performed: hauls two buckets from the well to the east quarter
-absent: the east quarter's trough stands empty and cracking
+absent: The east quarter's trough stands empty and cracking
 
 id: shoe_the_draft_horses
 owner: greta
@@ -42,7 +42,7 @@ role: smith
 at: 20,6
 window: 18:00-19:00
 performed: works the forge late, the hammer audible across the square
-absent: the forge is cold and the horses stay unshod
+absent: The forge is cold and the horses stay unshod
 
 id: mend_the_chapel_roof
 owner: abel
@@ -51,7 +51,7 @@ role: builder
 at: 33,18
 window: 17:00-18:00
 performed: carries beams up a ladder against the chapel wall
-absent: the ladder lies where it fell and the roof stays open
+absent: The ladder lies where it fell and the roof stays open
 
 id: settle_the_market_disputes
 owner: kirioth
@@ -60,7 +60,7 @@ role: authority
 at: 17,11
 window: 08:00-09:00
 performed: stands at the stalls hearing one trader out, then the other
-absent: two traders shout past each other and nobody separates them
+absent: Two traders shout past each other and nobody separates them
 
 id: keep_the_ledger_of_the_dead
 owner: mary
@@ -68,11 +68,11 @@ role: authority
 at: 33,18
 window: 13:00-15:00
 performed: writes at length in a book kept beneath the altar
-absent: the book lies open at the same page for days
+absent: The book lies open at the same page for days
 
 id: unlock_the_town_gate
 owner: shekel
 at: 12,9
 window: 05:00-06:00
 performed: draws the bar off the gate before anyone is about
-absent: the gate stays barred and a queue builds against it
+absent: The gate stays barred and a queue builds against it

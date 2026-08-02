@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"path"
+	"sort"
 	"rpg/common"
 	"rpg/defs"
 	"rpg/files"
@@ -53,6 +54,14 @@ func (g *GameInstance) populateTown() {
 		}
 		g.spawnTownsperson(person)
 	}
+
+	g.townspeople = nil
+	for _, person := range people {
+		g.townspeople = append(g.townspeople, person)
+	}
+	sort.Slice(g.townspeople, func(i, j int) bool {
+		return g.townspeople[i].InternalName < g.townspeople[j].InternalName
+	})
 
 	obligations := g.loadObligations(people, namedLocation)
 	g.checkSchedulesAreWalkable()

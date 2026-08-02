@@ -124,6 +124,12 @@ func (u *UIController) handleKeyboardInput() {
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		u.context.TogglePause()
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyE) {
+		u.context.Kill()
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyH) {
+		u.context.HideBody()
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyPeriod) {
 		u.context.WaitUntil(common.WaitUntilDawn)
 	}

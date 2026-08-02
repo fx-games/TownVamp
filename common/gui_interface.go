@@ -15,6 +15,13 @@ type UIContext struct {
     TogglePause func() bool
     WaitUntil   func(condition WaitCondition)
 
+    // The vampire's verbs. Killing is the only way to refill Blood; hiding the
+    // body is what turns a killing into a disappearance.
+    Kill      func() bool
+    HideBody  func() bool
+    LeaveTown func()
+    Blood     func() *Blood
+
     GameState    func() *State
     PlayerAction func() PlayerActions
     AudioPlayer  *audio.Player

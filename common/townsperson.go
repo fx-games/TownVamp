@@ -104,7 +104,36 @@ type Townsperson struct {
 	// rather than authored alongside the Routine.
 	Obligations []*Obligation
 
+	// Presence is what the town can tell. AbsentSinceDay is the Day they were
+	// last seen, which is what the one-Day Reassignment rule counts from.
+	Presence       Presence
+	AbsentSinceDay int
+	BodyHidden     bool
+
 	schedule Schedule
+}
+
+// GoAbsent is what a Kill does to a Townsperson as far as the town is
+// concerned: they stop being where they should be, and nobody can yet tell why.
+func (t *Townsperson) GoAbsent(onDay int) {
+	t.Presence = PresenceAbsent
+	t.AbsentSinceDay = onDay
+}
+
+// ConfirmDead is what finding the body does. Reassignment has already run by
+// then; what changes is that the town now knows there is a killer.
+func (t *Townsperson) ConfirmDead() {
+	t.Presence = PresenceConfirmedDead
+}
+
+func (t *Townsperson) IsAbsent() bool {
+	return t.Presence == PresenceAbsent || t.Presence == PresenceConfirmedDead
+}
+
+// HasBeenMissedForADay reports whether enough time has passed for the town to
+// start moving this Townsperson's duties around.
+func (t *Townsperson) HasBeenMissedForADay(currentDay int) bool {
+	return t.IsAbsent() && currentDay > t.AbsentSinceDay
 }
 
 // Schedule is the Townsperson's actual day, recomputed from the Routine and the
