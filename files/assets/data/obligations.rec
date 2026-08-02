@@ -1,0 +1,78 @@
+%rec: default
+#FIELDS: id owner towards role at window performed absent
+#
+# An Obligation is a duty pointing either at another Townsperson or at the town.
+# It is the only thing this simulation propagates: when someone goes Absent their
+# Obligations are voided, offered to whoever they pointed at, then to anyone whose
+# Role suits — and if nobody has the free hours, they go Unmet for good.
+#
+#   owner      who currently owes it
+#   towards    who it is owed to; leave empty when it is owed to the town.
+#              Reassignment tries this person first.
+#   role       who may inherit it once the person above has been tried. Leave
+#              empty and the duty dies with its holder.
+#   window     HH:MM-HH:MM. Must not collide with the owner's Routine — the
+#              Schedule resolves Obligations into the hours the Routine leaves free.
+#   performed  what a watcher sees when it happens
+#   absent     what the town looks like when it does not
+#
+# Author for consequence. Some duties should be absorbable, at least one should
+# not be.
+
+id: bread_for_mary
+owner: hanno
+towards: mary
+role: farmer
+at: 33,18
+window: 16:00-17:00
+performed: leaves a covered basket at the chapel door
+absent: the chapel step is bare and the door stays shut
+
+id: water_for_the_east_quarter
+owner: hanno
+role: farmer
+at: 47,13
+window: 17:00-18:00
+performed: hauls two buckets from the well to the east quarter
+absent: the east quarter's trough stands empty and cracking
+
+id: shoe_the_draft_horses
+owner: greta
+role: smith
+at: 20,6
+window: 18:00-19:00
+performed: works the forge late, the hammer audible across the square
+absent: the forge is cold and the horses stay unshod
+
+id: mend_the_chapel_roof
+owner: abel
+towards: mary
+role: builder
+at: 33,18
+window: 17:00-18:00
+performed: carries beams up a ladder against the chapel wall
+absent: the ladder lies where it fell and the roof stays open
+
+id: settle_the_market_disputes
+owner: kirioth
+towards: shekel
+role: authority
+at: 17,11
+window: 08:00-09:00
+performed: stands at the stalls hearing one trader out, then the other
+absent: two traders shout past each other and nobody separates them
+
+id: keep_the_ledger_of_the_dead
+owner: mary
+role: authority
+at: 33,18
+window: 13:00-15:00
+performed: writes at length in a book kept beneath the altar
+absent: the book lies open at the same page for days
+
+id: unlock_the_town_gate
+owner: shekel
+at: 12,9
+window: 05:00-06:00
+performed: draws the bar off the gate before anyone is about
+absent: the gate stays barred and a queue builds against it

@@ -70,6 +70,11 @@ type GameInstance struct {
 	actions *Actions
 	factory *common.Factory
 
+	// announcedToday keeps one performance of a duty from being reported on every
+	// tick the Townsperson stands there. Cleared at the Day boundary.
+	announcedToday   map[string]bool
+	unmetObligations []*common.Obligation
+
 	logHook     func(string)
 	logBuffer   []string
 	onMapChange func()
@@ -249,6 +254,8 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	println(fmt.Sprintf("Timekeeper created.."))
 
 	g.state = common.NewState(ldtkProject)
+	g.announcedToday = make(map[string]bool)
+	g.unmetObligations = nil
 	g.state.SetRandomSource(g.randomSource)
 	g.state.SetTimeMultiplier(g.configuration.TimeMultiplier)
 	g.state.SetPlayerMessage(g.PlayerMessage)
@@ -420,10 +427,20 @@ func (g *GameInstance) Advance(inGameSeconds float64) {
 	g.uiController.OnPlayerTurnTaken()
 }
 
-// onDayBoundary is where anything reckoned in whole Days happens: Absence
-// counting, and later the Reassignment of a vanished Townsperson's Obligations.
+// onDayBoundary is where anything reckoned in whole Days happens: Schedules are
+// recomputed here rather than mid-street, and this is where Absence counting and
+// Reassignment will hang.
 func (g *GameInstance) onDayBoundary() {
+	g.announcedToday = make(map[string]bool)
+
+	for _, actor := range g.state.GetMap().Actors() {
+		if person := actor.GetTownsperson(); person != nil {
+			person.RecomputeSchedule()
+		}
+	}
+
 	g.PlayerMessage(g.state.GetClock().String())
+	g.showUnmetObligations()
 }
 
 func (g *GameInstance) SetPaused(paused bool) { g.isPaused = paused }

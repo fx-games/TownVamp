@@ -15,7 +15,7 @@
 internal_name: shekel
 role: trader
 identity: keeps two sets of books and is frightened of the elder
-routine: 22:00-06:00 sleep 12,9
+routine: 22:00-05:00 sleep 12,9
 routine: 06:00-07:00 meal 12,9
 routine: 07:00-19:00 trade 17,11
 routine: 19:00-22:00 home 12,9
@@ -32,8 +32,8 @@ internal_name: kirioth
 role: authority
 identity: has been quietly wrong about a judgement for years
 routine: 21:00-07:00 sleep 19,17
-routine: 07:00-09:00 meal 19,17
-routine: 09:00-18:00 court 30,13
+routine: 07:00-08:00 meal 19,17
+routine: 09:00-17:00 court 30,13
 routine: 18:00-21:00 home 19,17
 
 internal_name: mary

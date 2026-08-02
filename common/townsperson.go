@@ -91,13 +91,68 @@ func (r Routine) FreeSecondsPerDay() int {
 	return SecondsPerDay - claimed
 }
 
-// Townsperson is an inhabitant of the town: a Role, an Identity, and a Routine.
-// Obligations and the derived Schedule arrive in a later ticket.
+// Townsperson is an inhabitant of the town: a Role, an Identity, a Routine, and
+// the Obligations they owe.
 type Townsperson struct {
 	InternalName string
 	Role         Role
 	Identity     string
 	Routine      Routine
+
+	// Obligations are what this Townsperson currently owes. They change hands
+	// when someone goes Absent, which is why the Schedule is derived from them
+	// rather than authored alongside the Routine.
+	Obligations []*Obligation
+
+	schedule Schedule
+}
+
+// Schedule is the Townsperson's actual day, recomputed from the Routine and the
+// current Obligation set. Recomputation happens at the Day boundary and never
+// mid-slot, so nobody abandons what they are doing when their duties change.
+func (t *Townsperson) Schedule() Schedule {
+	if t.schedule == nil {
+		t.RecomputeSchedule()
+	}
+	return t.schedule
+}
+
+// RecomputeSchedule rebuilds the day. It returns any Obligation that will not
+// fit, which is an authoring mistake rather than a simulation outcome.
+func (t *Townsperson) RecomputeSchedule() []error {
+	schedule, problems := DeriveSchedule(t.Routine, t.Obligations)
+	t.schedule = schedule
+	return problems
+}
+
+// TakeObligation hands this Townsperson a duty. The Schedule is left stale on
+// purpose: it is rebuilt at the next Day boundary.
+func (t *Townsperson) TakeObligation(obligation *Obligation) {
+	obligation.Owner = t.InternalName
+	t.Obligations = append(t.Obligations, obligation)
+}
+
+// ReleaseObligations hands back everything this Townsperson owed, which is what
+// happens when they are found to be Absent.
+func (t *Townsperson) ReleaseObligations() []*Obligation {
+	released := t.Obligations
+	t.Obligations = nil
+	t.schedule = nil
+	return released
+}
+
+// FreeSecondsPerDay is spare capacity: the hours neither the Routine nor the
+// current Obligations already claim. It is the only thing that limits
+// Reassignment, so it is also the town's resilience.
+func (t *Townsperson) FreeSecondsPerDay() int {
+	free := t.Routine.FreeSecondsPerDay()
+	for _, obligation := range t.Obligations {
+		free -= obligation.DurationSeconds()
+	}
+	if free < 0 {
+		return 0
+	}
+	return free
 }
 
 func (t *Townsperson) String() string {

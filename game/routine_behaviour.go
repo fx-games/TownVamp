@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"rpg/common"
 	"rpg/geometry"
 )
@@ -23,13 +24,13 @@ func (g *GameInstance) getScheduledAction(actor *common.Actor) (int, func()) {
 		return 0, nil // not enough time has passed for another step
 	}
 
-	slot, hasSlot := person.Routine.SlotAt(g.state.GetClock().SecondsSinceMidnight())
+	slot, hasSlot := person.Schedule().EntryAt(g.state.GetClock().SecondsSinceMidnight())
 	if !hasSlot {
 		return waitOneStep(stepCost) // unclaimed hour: spare capacity, spent standing still
 	}
 
-	here := actor.MapPosition()
-	if here == slot.At || g.state.GetMap().MoveDistance(here, slot.At) <= 0 {
+	if g.hasArrivedAt(actor, slot.At) {
+		g.noteObligationPerformed(actor, slot)
 		return waitOneStep(stepCost)
 	}
 
@@ -45,6 +46,21 @@ func (g *GameInstance) getScheduledAction(actor *common.Actor) (int, func()) {
 		}
 		g.actionBroker.Execute(common.NewMoveAction(common.AbstractCause("Routine"), actor, next, false))
 	}
+}
+
+// hasArrivedAt decides whether a Townsperson is where their day says they should
+// be. Standing on the exact tile counts; so does standing next to it when someone
+// else is already there. Duties are frequently owed *to* a person — bread left at
+// a door, a dispute heard at a stall — and the recipient is standing on the spot,
+// so insisting on the exact tile means the duty can never be performed at all.
+func (g *GameInstance) hasArrivedAt(actor *common.Actor, destination geometry.Point) bool {
+	here := actor.MapPosition()
+	if here == destination {
+		return true
+	}
+	currentMap := g.state.GetMap()
+	occupied := currentMap.IsActorAt(destination) || !currentMap.IsWalkable(destination)
+	return occupied && currentMap.MoveDistance(here, destination) <= 1
 }
 
 // waitOneStep burns the same time a step would have taken. Without it a
@@ -92,5 +108,34 @@ func (g *GameInstance) WaitUntil(condition common.WaitCondition) {
 		if player := g.state.GetPlayer(); player != nil && !player.IsAlive() {
 			return
 		}
+	}
+}
+
+// noteObligationPerformed shows the player what a Townsperson is doing, once,
+// when they arrive to do it — and only if the player is there to see it. Per ADR
+// 0002 nothing is recorded about what was witnessed; what the player makes of it
+// is theirs.
+func (g *GameInstance) noteObligationPerformed(actor *common.Actor, entry common.ScheduleEntry) {
+	if !entry.IsObligation() {
+		return
+	}
+	key := actor.GetInternalName() + ":" + entry.Obligation.ID
+	if g.announcedToday[key] {
+		return
+	}
+	g.announcedToday[key] = true
+
+	if !g.state.GetPlayer().CanSee(actor.MapPosition()) {
+		return
+	}
+	g.PlayerMessage(fmt.Sprintf("%s %s.", actor.Name(), entry.Obligation.Performed))
+}
+
+// showUnmetObligations is the absent face: what the town looks like where a duty
+// has stopped being done. Without this the simulation degrades invisibly and the
+// player has nothing to read.
+func (g *GameInstance) showUnmetObligations() {
+	for _, obligation := range g.unmetObligations {
+		g.PlayerMessage(obligation.Absent + ".")
 	}
 }

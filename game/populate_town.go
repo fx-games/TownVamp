@@ -53,7 +53,48 @@ func (g *GameInstance) populateTown() {
 		}
 		g.spawnTownsperson(person)
 	}
-	println(fmt.Sprintf("Loaded %d townspeople", len(people)))
+
+	obligations := g.loadObligations(people, namedLocation)
+	g.checkSchedulesAreWalkable()
+	println(fmt.Sprintf("Loaded %d townspeople owing %d obligations", len(people), len(obligations)))
+}
+
+func (g *GameInstance) loadObligations(people map[string]*common.Townsperson, namedLocation func(string) (geometry.Point, bool)) []*common.Obligation {
+	file, err := files.Open(path.Join("assets", "data", "obligations.rec"))
+	if err != nil {
+		g.ErrLog(fmt.Sprintf("no obligations file: %v", err))
+		return nil
+	}
+	defer file.Close()
+	return common.ReadObligations(file, people, namedLocation, g.ErrLog)
+}
+
+// checkSchedulesAreWalkable is the cost of deriving Schedules rather than
+// authoring them: nothing otherwise guarantees a Townsperson can physically get
+// from one slot to the next in the hours allowed. Reported at load, not
+// discovered at runtime.
+func (g *GameInstance) checkSchedulesAreWalkable() {
+	currentMap := g.state.GetMap()
+	travelSeconds := func(from, to geometry.Point) (float64, bool) {
+		path := currentMap.GetJPSPath(from, to, func(p geometry.Point) bool {
+			return currentMap.Contains(p) && currentMap.IsWalkable(p)
+		})
+		if len(path) == 0 {
+			return 0, false
+		}
+		// A step costs 10 AUT, and an AUT is SecondsPerAut in-game seconds.
+		return float64(len(path)) * 10 * common.SecondsPerAut, true
+	}
+
+	for _, actor := range currentMap.Actors() {
+		person := actor.GetTownsperson()
+		if person == nil {
+			continue
+		}
+		for _, problem := range person.Schedule().CheckWalkable(travelSeconds) {
+			g.ErrLog(fmt.Sprintf("%s: %v", person.InternalName, problem))
+		}
+	}
 }
 
 func (g *GameInstance) spawnTownsperson(person *common.Townsperson) {

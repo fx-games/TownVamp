@@ -143,7 +143,7 @@ func TestTownspeopleReachWhereTheirRoutineSendsThem(t *testing.T) {
 			continue
 		}
 		expected++
-		if actor.MapPosition() == slot.At {
+		if game.hasArrivedAt(actor, slot.At) {
 			arrived++
 		} else {
 			t.Logf("%s is at %v, their Routine says %s at %v",
