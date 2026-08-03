@@ -96,11 +96,11 @@ func TestBeingSeenTrespassingMakesThemWithdraw(t *testing.T) {
 func TestWithdrawalMovesHoursIndoorsWithoutStoppingWork(t *testing.T) {
 	// A bias, not confinement: they keep doing their job, but the loose hours
 	// spent out in the open come home.
-	// Abel: his day has a two-hour stop at the tavern, which is exactly the kind
-	// of loose hour Withdrawal is meant to take away. Greta's day is one long
-	// shift at the forge and has nothing to give up, which is the point.
+	// Elias: his day has meals and a lunch under a tree, which is exactly the
+	// kind of loose hour Withdrawal is meant to take away. Greta's day is one
+	// long shift at the inn and has nothing to give up, which is the point.
 	game := newTestGame(t)
-	resident := standInside(t, game, "abel")
+	resident := standInside(t, game, "elias")
 	person := resident.GetTownsperson()
 
 	home, hasHome := homeOf(person)

@@ -25,11 +25,11 @@ func TestProbeARunWithAKilling(t *testing.T) {
 	}
 
 	// Night one: watch until the town is asleep, then take the farmer, who feeds
-	// the chapel and waters the east quarter.
+	// the inn and keeps the mill in grain.
 	for clock.Hour() != 2 {
 		game.Advance(1.0)
 	}
-	victim := killByName(t, game, "hanno")
+	victim := killByName(t, game, "elias")
 	// Back to the lair before dawn, or the sun ends the run here.
 	if lair, ok := game.lairPosition(); ok {
 		game.GetWorldState().GetPlayer().SetMapPosition(lair)

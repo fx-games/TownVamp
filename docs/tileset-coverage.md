@@ -5,10 +5,10 @@ What [Town Design Handover](specs/town-design-handover.md) asks for versus what 
 [defs/definedIcons.go](../defs/definedIcons.go); the ids used by the current map are listed in
 [AGENTS.md](../AGENTS.md).
 
-**Verdict:** terrain, buildings, fields, church, cemetery, people and most carried items are
-already drawable. The gaps are almost entirely *work-place props* — the objects that make a mill
-read as a mill and a forge as a forge — plus fences. Roughly 20 new 8×8 sprites cover everything,
-and there are 190 empty tile slots to put them in.
+**Verdict:** terrain, buildings, fields, church, cemetery, people and most carried items were
+already drawable. The gaps were almost entirely *work-place props* — the objects that make a mill
+read as a mill and a forge as a forge — plus fences. Those 24 tiles are now drawn (ids 728–753,
+761–762); nothing on the design doc's scenery or item lists is missing art any more.
 
 ## Covered
 
@@ -39,66 +39,56 @@ and there are 190 empty tile slots to put them in.
 | Shop / trade signs on a wall | 114 (sword), 116 (shield), 117 (hammer), 119 (pickaxe), 154 (hanging sign) |
 | Townspeople sprites, all six distinct | 19–27, 47–55, 79–83, 286–288, 314, 342, 370, 454–465 |
 
-## Weak reuse — works, but reads as something else
+## Was missing — now drawn
 
-- **Fence** — 158 (lattice) and 59 (checker) are dungeon wall art; they fence a plot but do not
-  read as farm or cemetery fencing.
-- **Gate** — 60 (dark double doors) or 69/70; reads as a house door, not a gate in a fence.
-- **Grindstone / millstone** — 35 (brown ring) is the only round stone shape.
-- **Counter (inn bar), lectern, workbench** — all fall back to 353/505, the same table block.
-- **Chair** — nothing chair-shaped; a bench block has to stand in.
-- **Bucket** — 152/153 read as jug or flask; fine for carrying, wrong for "pour water into barrel".
-- **Iron scrap** — 692 (scattered brown/metal bits) is the nearest thing.
-- **Bread** — 163 (small sack) or 165; no bread shape exists.
+All the props the design needs and the sheet lacked have been painted into empty slots by
+[scripts/add_sprites.py](../scripts/add_sprites.py), which holds the art as ASCII and is safe to
+re-run. Names are Go constants in [defs/definedIcons.go](../defs/definedIcons.go); the solid ones
+are tagged `IsBlockingMovement` in `maps.ldtk`.
 
-## Gaps — new sprites needed
+| id | sprite | id | sprite |
+| --- | --- | --- | --- |
+| 728 | anvil | 742 | bucket |
+| 729 | grindstone | 743 | lectern |
+| 730 | tool rack | 744 | bell |
+| 731 | tongs | 745 | candle |
+| 732 | horseshoe | 746 | fence, horizontal |
+| 733/734/761/762 | **waterwheel** (2×2) | 747 | fence, vertical |
+| 735 | sawhorse | 748 | gate |
+| 736 | saw | 749 | wheelbarrow |
+| 737 | log pile | 750 | bread |
+| 738 | wooden toy | 751 | grain chute |
+| 739 | chair | 752 | flour sack |
+| 740 | counter / bar | 753 | bell rope |
+| 741 | mug | 763 | **window, horizontal wall** |
+| | | 764 | **window, vertical wall** |
 
-Grouped by what the design doc needs them for. One 8×8 tile each unless noted.
+Blocking (movement): 728, 729, 730, 733, 734, 735, 737, 740, 743, 746, 747, 748, 749, 751, 761,
+762, 763, 764. The waterwheel also blocks view. Chairs are deliberately walkable so a Townsperson
+can sit on one.
 
-**Mill (nothing here exists)**
-1. Waterwheel / mill wheel — the single most identifying prop in the design; ideally 2×2 tiles
-2. Grain chute
-3. Flour sack distinct from grain sack (colour variant is enough)
+**Windows (763, 764) block movement and nothing else** — they are the only tiles in the sheet that
+do. `IsWalkable` and `IsTransparent` have always been independent bools in `gridmap`, and until now
+nothing used the gap between them. A window is what lets a vampire stand in a dark street and watch
+a Private Action happen in a lit room he cannot walk into. If either ever gets tagged
+`IsBlockingView`, every house becomes opaque again and the secrets inside them become
+unobservable — so check that tag before blaming the perception code.
 
-**Blacksmith**
-4. Anvil
-5. Grindstone (a proper wheel-on-frame)
-6. Tool rack
-7. Tongs
-8. Horseshoe
+763 sits in a horizontal (top/bottom) wall and 764 in a vertical (side) wall; both keep the brick
+rhythm of the wall they interrupt, so a window reads as part of the building rather than a hole in
+it.
 
-**Carpenter**
-9. Sawhorse
-10. Saw
-11. Log / cut lumber pile (63 is flat planks, not a stack)
-12. Wooden toy
+Still standing in for something else, and fine that way: **iron scrap** → 692 (scattered metal
+bits), **hoe** → 119 (pickaxe), **basket** → 62 or 378 (wicker), **prayer book** → 127,
+**prayer notes** → 139 (scroll), **coin purse** → 165, **grain sack** → 163.
 
-**Inn**
-13. Chair
-14. Counter / bar front
-15. Mug
-16. Bucket
+## Where new art goes
 
-**Church**
-17. Lectern
-18. Bell rope (and a bell, if the bell is ever visible)
-19. Candle (upright, distinct from a torch)
-
-**Farm and cemetery**
-20. Wooden fence — straight and corner, so 2 tiles
-21. Gate
-22. Wheelbarrow
-23. Bread
-
-That is 20 sprites, 24 tiles counting the fence pieces and a 2×2 waterwheel.
-
-## Where to put them
-
-190 tile slots in the sheet are fully transparent, so new art can be appended without moving
-anything. Largest free runs: **511–531** (21), **726–755** (30), **761–783** (23), **700–717** (18),
-**672–681** (10). Ids stay stable as long as sprites are only added into empty slots — never
-reflow existing rows, the ids are hard-coded in [defs/definedIcons.go](../defs/definedIcons.go)
-and baked into `maps.ldtk`.
+The new sprites took 728–753 and 761–764. Around 160 slots are still fully transparent for
+whatever comes next — largest free runs: **511–531** (21), **765–783** (19), **700–717** (18),
+**672–681** (10). Ids must stay stable: only ever add art into empty slots, never reflow existing
+rows, because ids are hard-coded in [defs/definedIcons.go](../defs/definedIcons.go) and baked into
+`maps.ldtk`.
 
 After adding art, tag anything solid in LDtk's tileset editor (`IsBlockingMovement`,
 `IsBlockingView`) — the game reads collision from those tags, not from the sprite.

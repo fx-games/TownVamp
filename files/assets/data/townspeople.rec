@@ -11,48 +11,67 @@
 #             location on the map. The Routine is the fixed part of the day and
 #             reacts to nothing. Hours it leaves free are spare capacity, which
 #             is what limits Reassignment later — so vary it deliberately.
+#
+# The cast and their days come from docs/specs/town-design-handover.md. Places
+# are named rather than numbered: the names are Location entities on the Meta
+# layer of files/assets/maps.ldtk.
 
-internal_name: shekel
-role: trader
-identity: keeps two sets of books and is frightened of the elder
-routine: 22:00-05:00 sleep 12,9
-routine: 06:00-07:00 meal 12,9
-routine: 07:00-19:00 trade 17,11
-routine: 19:00-21:00 home 12,9
-
-internal_name: abel
-role: builder
-identity: owes money he cannot repay and is drinking through the debt
-routine: 23:00-06:00 sleep 12,15
-routine: 06:00-07:00 meal 12,15
-routine: 08:00-17:00 build 25,20
-routine: 18:00-20:00 tavern 20,13
-
-internal_name: kirioth
-role: authority
-identity: has been quietly wrong about a judgement for years
-routine: 21:00-07:00 sleep 19,17
-routine: 07:00-08:00 meal 19,17
-routine: 09:00-17:00 court 30,13
-routine: 18:00-21:00 home 19,17
-
-internal_name: mary
-role: authority
-identity: hears everyone's confession and carries all of it alone
-routine: 01:00-06:00 sleep 33,18
-routine: 06:00-07:00 prayer 33,18
-routine: 07:00-12:00 chapel 33,18
-
-internal_name: hanno
+internal_name: elias
 role: farmer
-identity: feeds two households besides his own and mentions it to no one
-routine: 21:00-05:00 sleep 40,13
-routine: 05:00-06:00 meal 40,13
-routine: 06:00-16:00 fields 47,13
+identity: has a daughter in the cemetery and has told no one how often he goes
+routine: 22:00-05:00 sleep farmer_bedroom
+routine: 05:00-06:00 meal farmhouse
+routine: 06:00-10:00 harvest vegetable_field
+routine: 12:00-13:00 lunch lunch_tree
+routine: 13:00-16:00 harvest grain_field
+routine: 19:00-20:00 meal farmhouse
+routine: 21:00-22:00 home farmhouse
+
+internal_name: martin
+role: farmer
+identity: wakes on the riverbank with no memory of walking there
+routine: 23:00-02:00 sleep miller_bedroom
+routine: 03:00-06:00 sleep miller_bedroom
+routine: 06:00-07:00 meal mill_interior
+routine: 07:00-12:00 grind mill
+routine: 12:00-13:00 lunch river
+routine: 13:00-17:00 grind mill
+routine: 17:00-18:00 waterwheel river
+routine: 19:00-23:00 home mill_interior
 
 internal_name: greta
+role: trader
+identity: has been thinning the ale since the bad winter and cannot stop now
+routine: 23:00-05:00 sleep innkeeper_bedroom
+routine: 05:00-07:00 kitchen inn
+routine: 07:00-12:00 serve inn
+routine: 13:00-19:00 serve inn
+routine: 20:00-22:00 clean inn
+
+internal_name: otto
 role: smith
-identity: is the only one who knows who really started the fire
-routine: 01:00-06:00 sleep 17,5
-routine: 06:00-07:00 meal 17,5
-routine: 07:00-18:00 forge 20,6
+identity: keeps every scrap of iron anyone throws away and will not say why
+routine: 22:00-06:00 sleep blacksmith_bedroom
+routine: 06:00-07:00 meal blacksmith
+routine: 07:00-12:00 forge blacksmith
+routine: 13:00-17:00 forge blacksmith
+routine: 20:00-22:00 home blacksmith_bedroom
+
+internal_name: marta
+role: builder
+identity: carves toys for a child who is not hers and never gives them away
+routine: 23:00-06:00 sleep carpenter_bedroom
+routine: 06:00-07:00 meal carpenter_workshop
+routine: 07:00-11:00 workshop carpenter_workshop
+routine: 13:00-17:00 workshop carpenter_workshop
+routine: 19:00-21:00 workshop carpenter_interior
+
+internal_name: aldren
+role: authority
+identity: lost his faith years ago and has been reading his belief off paper since
+routine: 22:00-05:00 sleep priest_bedroom
+routine: 05:00-06:00 prayer church
+routine: 06:00-07:00 meal priest_study
+routine: 09:00-11:00 duties church
+routine: 13:00-17:00 visits town_square
+routine: 19:00-20:00 prayer church

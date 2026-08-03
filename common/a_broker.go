@@ -200,18 +200,25 @@ func (d *Broker) CancelAllAnimations() {
 	d.movementAnimations = make(map[*Actor]*MovementAnimation)
 }
 
+// ClearQueuedActions drops queued actions the predicate rejects, and drops any
+// batch left empty.
+//
+// The old version indexed the inner slice with the outer loop's index —
+// actions[:i] where i counts batches, not actions in a batch — so cancelling
+// auto-movement with more queued batches than actions in one of them panicked
+// with a slice bounds error. Moving while a path was queued was enough to do it.
 func (d *Broker) ClearQueuedActions(shouldBeRemoved func(action Action) bool) {
 	for i := len(d.queuedActions) - 1; i >= 0; i-- {
-		actions := d.queuedActions[i]
-		for _, action := range actions {
-			if shouldBeRemoved(action) {
-				actions = append(actions[:i], actions[i+1:]...)
+		var kept []Action
+		for _, action := range d.queuedActions[i] {
+			if !shouldBeRemoved(action) {
+				kept = append(kept, action)
 			}
 		}
-		if len(actions) == 0 {
+		if len(kept) == 0 {
 			d.queuedActions = append(d.queuedActions[:i], d.queuedActions[i+1:]...)
 		} else {
-			d.queuedActions[i] = actions
+			d.queuedActions[i] = kept
 		}
 	}
 }

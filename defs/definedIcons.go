@@ -296,4 +296,43 @@ const (
 
 	IconCorpse      int32 = 135
 	IconRogueCorpse int32 = 592
+
+	// Town proof-of-concept props, drawn by scripts/add_sprites.py into empty sheet slots.
+	IconAnvil       int32 = 728
+	IconGrindstone  int32 = 729
+	IconToolRack    int32 = 730
+	IconTongs       int32 = 731
+	IconHorseshoe   int32 = 732
+	IconSawhorse    int32 = 735
+	IconSaw         int32 = 736
+	IconLogPile     int32 = 737
+	IconWoodenToy   int32 = 738
+	IconChair       int32 = 739
+	IconCounter     int32 = 740
+	IconMug         int32 = 741
+	IconBucket      int32 = 742
+	IconLectern     int32 = 743
+	IconBell        int32 = 744
+	IconCandle      int32 = 745
+	IconFenceHoriz  int32 = 746
+	IconFenceVert   int32 = 747
+	IconGate        int32 = 748
+	IconWheelbarrow int32 = 749
+	IconBread       int32 = 750
+	IconGrainChute  int32 = 751
+	IconFlourSack   int32 = 752
+	IconBellRope    int32 = 753
+
+	// Windows block movement but not sight. They are the only tiles in the town
+	// that do, and the vampire's whole trade depends on it: a Private Action
+	// performed behind glass can be watched from the street without the performer
+	// being able to reach whoever is watching.
+	IconWindowHoriz int32 = 763
+	IconWindowVert  int32 = 764
+
+	// Waterwheel is 2x2 tiles.
+	IconWaterwheelTopLeft     int32 = 733
+	IconWaterwheelTopRight    int32 = 734
+	IconWaterwheelBottomLeft  int32 = 761
+	IconWaterwheelBottomRight int32 = 762
 )

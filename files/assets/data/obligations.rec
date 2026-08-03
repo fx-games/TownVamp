@@ -16,96 +16,148 @@
 #   performed  what a watcher sees when it happens
 #   absent     what the town looks like when it does not
 #
-# Author for consequence. Some duties should be absorbable, at least one should
-# not be.
+# This is the dependency graph in docs/specs/town-design-handover.md: the farmer
+# feeds the inn and the mill, the miller feeds the inn, the smith keeps both
+# their tools working, the carpenter keeps the mill and the inn standing, and
+# the priest touches everyone. Elias and Martin are both Role farmer, so their
+# deliveries can move between them — the smith's and the carpenter's cannot.
 
-id: bread_for_mary
-owner: hanno
-towards: mary
+id: vegetables_to_the_inn
+owner: elias
+towards: greta
 role: farmer
-at: 33,18
-window: 16:00-17:00
-performed: leaves a covered basket at the chapel door
-absent: The chapel step is bare and the door stays shut
+at: inn
+window: 11:00-12:00
+performed: carries a full basket in through the inn door and leaves it by the counter
+absent: The inn's kitchen bench stays bare and the stew is thinner every day
 
-id: water_for_the_east_quarter
-owner: hanno
+id: grain_to_the_mill
+owner: elias
+towards: martin
 role: farmer
-at: 47,13
-window: 17:00-18:00
-performed: hauls two buckets from the well to the east quarter
-absent: The east quarter's trough stands empty and cracking
+at: mill
+window: 16:00-18:00
+performed: hauls a grain sack the length of the road and drops it by the chute
+absent: The chute stands empty and the millstones are not turned at all
 
-id: shoe_the_draft_horses
-owner: greta
-role: smith
-at: 20,6
+id: flour_to_the_inn
+owner: martin
+towards: greta
+role: farmer
+at: inn
 window: 18:00-19:00
-performed: works the forge late, the hammer audible across the square
-absent: The forge is cold and the horses stay unshod
+performed: carries two flour sacks to the inn and stacks them inside the door
+absent: There is no flour in the inn and no bread on the tables
 
-id: mend_the_chapel_roof
-owner: abel
-towards: mary
-role: builder
-at: 33,18
+id: repair_the_farm_tools
+owner: otto
+towards: elias
+role: smith
+at: blacksmith
+window: 12:00-13:00
+performed: works a hoe blade flat on the anvil while the farmer waits
+absent: The farm tools go unmended and the rows are worked half as fast
+
+id: repair_the_carpenters_tools
+owner: otto
+towards: marta
+role: smith
+at: carpenter_workshop
 window: 17:00-18:00
-performed: carries beams up a ladder against the chapel wall
-absent: The ladder lies where it fell and the roof stays open
+performed: carries a mended saw down to the workshop and tries it on a board
+absent: A blunt saw hangs on the workshop wall and nothing gets cut straight
 
-id: settle_the_market_disputes
-owner: kirioth
-towards: shekel
+id: repair_the_mill
+owner: marta
+towards: martin
+role: builder
+at: mill
+window: 11:00-12:00
+performed: works on the waterwheel with boards under one arm until it stops squealing
+absent: The waterwheel screams all day and the mill runs slower each week
+
+id: repair_the_inn
+owner: marta
+towards: greta
+role: builder
+at: inn
+window: 17:00-18:00
+performed: rights a broken chair in the common room and hammers it back together
+absent: Broken chairs pile up by the inn door and nobody sits at the far table
+
+id: feed_the_town
+owner: greta
+role: trader
+at: inn
+window: 12:00-13:00
+performed: carries bowls out to every table without being asked for them
+absent: The common room is dark at noon and people eat standing in their own houses
+
+id: hold_the_service
+owner: aldren
 role: authority
-at: 17,11
-window: 08:00-09:00
-performed: stands at the stalls hearing one trader out, then the other
-absent: Two traders shout past each other and nobody separates them
+at: church
+window: 07:00-09:00
+performed: rings the bell, then reads to whoever came
+absent: The bell does not ring, and by the second morning nobody comes to hear it
 
-id: keep_the_ledger_of_the_dead
-owner: mary
+id: bless_the_fields
+owner: aldren
 role: authority
-at: 33,18
-window: 13:00-15:00
-performed: writes at length in a book kept beneath the altar
-absent: The book lies open at the same page for days
-
-id: unlock_the_town_gate
-owner: shekel
-at: 12,9
-window: 05:00-06:00
-performed: draws the bar off the gate before anyone is about
-absent: The gate stays barred and a queue builds against it
+at: vegetable_field
+window: 11:00-13:00
+performed: walks the crop rows with a hand raised over them
+absent: The rows go unblessed, and the farmer works them like a man who expects nothing
 
 # Private Actions. These are only carried out when nobody outside the whitelist
 # can see. A group secret is a whitelist with more than one name on it — watching
 # who is permitted to be present is itself informative.
 
-id: the_second_ledger
-owner: shekel
-role: trader
-at: 12,9
+id: the_grave_visit
+owner: elias
+at: childs_grave
+window: 20:00-21:00
+private: true
+witness: aldren
+performed: sets flowers on a small grave and stands over it without speaking
+absent: A grave at the back of the cemetery goes untended and the flowers dry out
+
+id: the_sleepwalk
+owner: martin
+at: quiet_riverbank
+window: 02:00-03:00
+private: true
+performed: walks out of the mill in the dark, stands at the water, and walks back
+absent: Nothing happens at the river at night, and nobody would have known to miss it
+
+id: watering_the_ale
+owner: greta
+at: inn_cellar
+window: 22:00-23:00
+private: true
+performed: carries a bucket down to the cellar and stands a long while at the barrel
+absent: The ale is honest, the barrels run out early, and the takings do not cover the week
+
+id: collecting_the_scrap
+owner: otto
+at: smith_storage
+window: 19:00-20:00
+private: true
+performed: waits until the forge is empty, then gathers the iron offcuts into the back room
+absent: Iron scrap lies where it fell around the anvil and slowly rusts
+
+id: carving_the_toy
+owner: marta
+at: carpenter_bedroom
 window: 21:00-22:00
 private: true
-performed: unshutters a lamp and copies figures from one book into another
-absent: Nobody reconciles the tolls, and the counts drift apart
+performed: sits at the bench with one small piece of wood and does not light the lamp for it
+absent: The drawer by the bed stays shut and nothing new is put in it
 
-id: the_debt_collection
-owner: abel
-towards: greta
-at: 20,6
-window: 21:00-23:00
+id: rehearsing_the_sermon
+owner: aldren
+at: priest_study
+window: 20:00-22:00
 private: true
-witness: greta
-performed: speaks with Greta at the forge door, neither of them looking up
-absent: A debt goes unspoken of, and neither party will raise it
-
-id: what_burned_the_mill
-owner: greta
-towards: mary
-at: 33,18
-window: 23:00-01:00
-private: true
-witness: mary
-performed: waits at the chapel until the lamps are out, then goes inside
-absent: Something that happened stays unsaid, and the wrong man keeps the blame
+performed: paces the study reading the same page aloud until it sounds meant
+absent: Sunday's words come out flat and the congregation cannot say why

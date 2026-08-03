@@ -99,7 +99,7 @@ func TestObligationsDoNotMoveOnTheDayOfTheKill(t *testing.T) {
 	// Reassignment waits a full Day; the town cannot react to a disappearance it
 	// has not noticed.
 	game := newTestGame(t)
-	victim := killByName(t, game, "hanno")
+	victim := killByName(t, game, "elias")
 	held := len(victim.Obligations)
 	if held == 0 {
 		t.Fatal("victim owed nothing, so this proves nothing")
@@ -117,7 +117,7 @@ func TestObligationsDoNotMoveOnTheDayOfTheKill(t *testing.T) {
 
 func TestObligationsAreReassignedAfterADay(t *testing.T) {
 	game := newTestGame(t)
-	victim := killByName(t, game, "hanno")
+	victim := killByName(t, game, "elias")
 	if len(victim.Obligations) == 0 {
 		t.Fatal("victim owed nothing")
 	}
@@ -135,7 +135,7 @@ func TestObligationsAreReassignedAfterADay(t *testing.T) {
 	accountedFor := len(game.UnmetObligations())
 	for _, actor := range townspeople(game) {
 		for _, obligation := range actor.GetTownsperson().Obligations {
-			if obligation.Owner == "hanno" || obligation.ID == "bread_for_mary" || obligation.ID == "water_for_the_east_quarter" {
+			if obligation.Owner == "elias" || obligation.ID == "vegetables_to_the_inn" || obligation.ID == "grain_to_the_mill" {
 				accountedFor++
 			}
 		}
@@ -149,32 +149,31 @@ func TestReassignmentPrefersThePersonTheDutyPointedAt(t *testing.T) {
 	// Relationship before competence: the widow being fed can fetch her own bread.
 	game := newTestGame(t)
 
-	// bread_for_mary is owed by hanno to mary, and mary has thirteen spare hours.
-	killByName(t, game, "hanno")
+	// vegetables_to_the_inn is owed by elias to greta, and greta has the hours.
+	killByName(t, game, "elias")
 	startDay := game.GetWorldState().GetClock().Day()
 	for game.GetWorldState().GetClock().Day() < startDay+2 && game.Ending() == RunOngoing {
 		game.Advance(1.0)
 	}
 
-	mary := game.townspersonByName("mary")
-	if mary == nil {
-		t.Fatal("mary is missing")
+	greta := game.townspersonByName("greta")
+	if greta == nil {
+		t.Fatal("greta is missing")
 	}
-	for _, obligation := range mary.Obligations {
-		if obligation.ID == "bread_for_mary" {
+	for _, obligation := range greta.Obligations {
+		if obligation.ID == "vegetables_to_the_inn" {
 			return // took it herself, as intended
 		}
 	}
-	t.Error("bread_for_mary was not offered to Mary, who it was owed to and who has the hours")
+	t.Error("vegetables_to_the_inn was not offered to Greta, who it was owed to and who has the hours")
 }
 
 func TestADutyNobodyCanTakeGoesUnmetAndIsVisible(t *testing.T) {
 	// The absent face has to reach the player, or the town degrades invisibly.
 	game := newTestGame(t)
 
-	// unlock_the_town_gate is owed by shekel to the town with no suitable Role,
-	// so it dies with him.
-	killByName(t, game, "shekel")
+	// the_grave_visit is Elias's alone: it names no Role, so it dies with him.
+	killByName(t, game, "elias")
 	startDay := game.GetWorldState().GetClock().Day()
 	for game.GetWorldState().GetClock().Day() < startDay+2 && game.Ending() == RunOngoing {
 		game.Advance(1.0)
@@ -182,12 +181,12 @@ func TestADutyNobodyCanTakeGoesUnmetAndIsVisible(t *testing.T) {
 
 	var unmet *common.Obligation
 	for _, obligation := range game.UnmetObligations() {
-		if obligation.ID == "unlock_the_town_gate" {
+		if obligation.ID == "the_grave_visit" {
 			unmet = obligation
 		}
 	}
 	if unmet == nil {
-		t.Fatalf("unlock_the_town_gate should be Unmet; ledger holds %d", len(game.UnmetObligations()))
+		t.Fatalf("the_grave_visit should be Unmet; ledger holds %d", len(game.UnmetObligations()))
 	}
 
 	found := false
@@ -213,7 +212,7 @@ func TestAnUnhiddenBodyIsFoundAndBringsAHunter(t *testing.T) {
 	// Leaving a body where it will be found is the difference between "she went
 	// away" and "someone is killing us".
 	game := newTestGame(t)
-	victim := killLeavingBody(t, game, "shekel")
+	victim := killLeavingBody(t, game, "martin")
 
 	for i := 0; i < 2*24*60*oneRealSecond; i++ {
 		game.Advance(1.0)
@@ -243,7 +242,7 @@ func TestAHiddenBodyIsNotFound(t *testing.T) {
 
 func TestAHunterCatchingThePlayerEndsTheRun(t *testing.T) {
 	game := newTestGame(t)
-	killLeavingBody(t, game, "shekel")
+	killLeavingBody(t, game, "martin")
 
 	for i := 0; i < 3*24*60*oneRealSecond && game.Ending() == RunOngoing; i++ {
 		game.Advance(1.0)

@@ -13,34 +13,43 @@
 #
 # The town map itself marks no interiors, so these are authored here rather than
 # on the map. When the LDtk map gains zone layers this file should go away.
+#
+# Rects must not overlap: the map paints them in file order, but a lookup takes
+# the first record that contains the tile. Everything unlisted is public, which
+# is why the inn's common room, the church nave and the cemetery are absent —
+# the vampire is welcome in all three. Only the rooms behind them are not.
 
-name: Shekel's house
+name: Elias's farmhouse
 type: private
-rect: 10,7,5,4
-belongs_to: shekel
+rect: 20,5,8,7
+belongs_to: elias
 
-name: Abel's house
+name: The barn
 type: private
-rect: 10,14,5,3
-belongs_to: abel
+rect: 20,25,8,7
+belongs_to: elias
 
-name: The elder's hall
+name: The mill
 type: private
-rect: 17,16,5,3
-belongs_to: kirioth
+rect: 54,8,8,8
+belongs_to: martin
 
-name: The chapel
+name: Greta's back rooms
 type: private
-rect: 31,17,5,3
-belongs_to: mary
-belongs_to: abel
-
-name: Hanno's holding
-type: private
-rect: 38,11,5,4
-belongs_to: hanno
+rect: 31,6,3,7
+belongs_to: greta
 
 name: The forge
 type: private
-rect: 16,4,6,4
-belongs_to: greta
+rect: 44,5,9,8
+belongs_to: otto
+
+name: Marta's workshop
+type: private
+rect: 44,26,9,9
+belongs_to: marta
+
+name: The priest's study
+type: private
+rect: 31,32,3,4
+belongs_to: aldren
