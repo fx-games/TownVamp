@@ -25,15 +25,23 @@ func (d *UpdateFoVAction) Execute(context ActionContext) []Action {
 		return nil
 	}
 
-	visionRange := context.GameState.GetPlayerVisionRange()
+	isPlayer := actor == state.GetPlayer()
+
+	// Only the player's range is lighting-dependent. An NPC sees by its own
+	// stat, and nothing about an NPC moving changes what the player knows.
+	visionRange := actor.VisionRange()
+	if isPlayer {
+		visionRange = state.GetPlayerVisionRange()
+	}
 
 	currentMap.UpdateFieldOfView(actor.GetFOV(), actor.MapPosition(), visionRange)
 
-	updatePlayerKnowledge(context)
-
-	if actor == state.GetPlayer() {
-		state.updatePlayerDijkstra()
+	if !isPlayer {
+		return nil
 	}
+
+	updatePlayerKnowledge(context)
+	state.updatePlayerDijkstra()
 	return nil
 }
 

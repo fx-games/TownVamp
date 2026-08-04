@@ -25,16 +25,17 @@ interpretation — a door, an object carried, a thing used, a conversation withi
 
 **Blocked by:** 08 — Obligations and derived Schedule.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] An action can be marked Private and given a Witness Whitelist in the record format
-- [ ] A Townsperson performs a Private Action only when no unwhitelisted observer can see
+- [x] An action can be marked Private and given a Witness Whitelist in the record format
+- [x] A Townsperson performs a Private Action only when no unwhitelisted observer can see
       them
-- [ ] A Private Action is abandoned when an unwhitelisted observer arrives partway through
-- [ ] An interrupted Townsperson moves somewhere unobserved and attempts the action again
+- [x] A Private Action is abandoned when an unwhitelisted observer arrives partway through
+- [x] An interrupted Townsperson moves somewhere unobserved and attempts the action again
       if such a place is reachable
-- [ ] The perception query runs only for in-flight Private Actions, not for every actor
+- [x] The perception query runs only for in-flight Private Actions, not for every actor
       every tick
-- [ ] A vampire standing in darkness can watch a Private Action performed in light without
+- [x] A vampire standing in darkness can watch a Private Action performed in light without
       interrupting it
-- [ ] Nothing is stored about what the player has observed
+      *the asymmetry is sight *ranges* (`NightSightRange`, `LanternRange` in `game/perception.go`), not the engine's lit/unlit occlusion — the town marks no lit tiles yet*
+- [x] Nothing is stored about what the player has observed

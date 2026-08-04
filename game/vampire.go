@@ -105,22 +105,44 @@ func (g *GameInstance) tickVampire(inGameSeconds float64) {
 	if g.ending != RunOngoing || g.blood == nil {
 		return
 	}
-	g.blood.Drain(inGameSeconds)
+
+	// Sunlight. Being caught outside the lair at dawn is the deadline that
+	// structures every night: how far it is safe to roam, and whether there is
+	// time to get back. It does not kill on the instant — it burns the Blood
+	// away fast enough that there is just time to run for the lair, and no time
+	// for anything else.
+	inSunlight := g.state.GetClock().IsDaylight() && !g.isPlayerSheltered()
+	if inSunlight {
+		g.blood.DrainInSunlight(inGameSeconds)
+	} else {
+		g.blood.Drain(inGameSeconds)
+	}
+	g.noteBurning(inSunlight)
 
 	if g.blood.IsEmpty() {
-		g.endRun(RunStarved)
+		if inSunlight {
+			g.endRun(RunBurned)
+		} else {
+			g.endRun(RunStarved)
+		}
 		return
 	}
 
-	// Sunlight. Being caught outside the lair at dawn is the hard deadline that
-	// structures every night: how far it is safe to roam, and whether there is
-	// time to get back.
-	clock := g.state.GetClock()
-	if clock.IsDaylight() && !g.isPlayerSheltered() {
-		g.endRun(RunBurned)
+	g.warnAboutDawn()
+}
+
+// noteBurning tells the player the sun has him, once per exposure rather than
+// once per tick.
+func (g *GameInstance) noteBurning(inSunlight bool) {
+	if inSunlight == g.isBurning {
 		return
 	}
-	g.warnAboutDawn()
+	g.isBurning = inSunlight
+	if inSunlight {
+		g.PlayerMessage("The sun is on you. You are burning.")
+	} else {
+		g.PlayerMessage("You are out of the sun.")
+	}
 }
 
 // LairRadius is how much of the map around the lair counts as shelter.

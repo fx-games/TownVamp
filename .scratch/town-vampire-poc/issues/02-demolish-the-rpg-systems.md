@@ -19,12 +19,13 @@ deletion and fixing the call sites that break.
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Dungeon generation and the combat simulator are gone
-- [ ] Combat, magic, status effects, hit zones and targeting are gone
-- [ ] Loot generation, unique items, quests and quest dialogue are gone
-- [ ] The two-state AI action selector is gone
-- [ ] RPG-specific interface panels are gone
-- [ ] The project builds, the town map loads, and the player can move around it
-- [ ] The command-line subcommands that only served deleted systems are gone too
+- [x] Dungeon generation and the combat simulator are gone
+- [x] Combat, magic, status effects, hit zones and targeting are gone
+- [x] Loot generation, unique items, quests and quest dialogue are gone
+- [x] The two-state AI action selector is gone
+      *the `ActorState` enum and its setters survive in `common/base_actor.go`, but nothing reads `GetState()` — no selector remains*
+- [x] RPG-specific interface panels are gone
+- [x] The project builds, the town map loads, and the player can move around it
+- [x] The command-line subcommands that only served deleted systems are gone too

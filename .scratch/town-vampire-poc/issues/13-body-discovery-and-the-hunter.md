@@ -25,15 +25,17 @@ him. Patrols can use the map format's existing named-path support.
 
 **Blocked by:** 11 — The vampire.
 
-**Status:** ready-for-agent
+**Status:** mostly-done
 
-- [ ] A body in a Townsperson's line of sight promotes the victim to Confirmed Dead
-- [ ] A hidden body does not, and the victim stays Absent
-- [ ] Discovery is evaluated per corpse rather than per observer
-- [ ] A Confirmed death puts a Hunter on the streets at night
-- [ ] A Hunter pursues the vampire on sight instead of fleeing
-- [ ] A Hunter catching the vampire ends the run immediately
+- [x] A body in a Townsperson's line of sight promotes the victim to Confirmed Dead
+- [x] A hidden body does not, and the victim stays Absent
+- [x] Discovery is evaluated per corpse rather than per observer
+- [x] A Confirmed death puts a Hunter on the streets at night
+- [x] A Hunter pursues the vampire on sight instead of fleeing
+- [x] A Hunter catching the vampire ends the run immediately
 - [ ] No health, damage, armour or attack rolls exist anywhere in the game
-- [ ] A Hunter carrying light cannot see into unlit tiles
-- [ ] Tests cover discovery, non-discovery of a hidden body, and Hunter spawning on
+      *nothing uses them, but `stats.Health`, `damageDice`, `GetArmorClass` and the health bars in `gui/root_draw.go` are all still there*
+- [x] A Hunter carrying light cannot see into unlit tiles
+      *enforced as `LanternRange = 3` rather than by lit/unlit occlusion, since the town marks no lit tiles*
+- [x] Tests cover discovery, non-discovery of a hidden body, and Hunter spawning on
       Confirmation

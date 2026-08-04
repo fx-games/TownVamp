@@ -50,7 +50,10 @@ func (d OnMoveHook) After(action Action, context ActionContext) []Action {
 	actions = append(actions, TriggerCellEffectsDuringMovementForActor(state, action, actor, newPos, AnimateNow())...)
 
 	if actor != state.GetPlayer() {
-		actions = append(actions, NewUpdateFoVAction(action.Cause(), actor))
+		// No field of view is ever read except the player's — perception queries
+		// raycast on demand — so an NPC step used to pay for a vision map nobody
+		// looked at. With the town walking in real time that was the single
+		// biggest cost in the move path.
 		return actions
 	}
 
@@ -60,11 +63,30 @@ func (d OnMoveHook) After(action Action, context ActionContext) []Action {
 		actions = append(actions, NewTransitionAction(action.Cause(), transitionAtLocation))
 	}
 
-	actions = append(actions, []Action{
-		NewUpdateFoVAction(action.Cause(), actor),
-	}...)
+	actions = append(actions, NewUpdateFoVAction(action.Cause(), actor))
+	if pickUp, hasSomethingToPickUp := d.autoPickUpAt(context, newPos); hasSomethingToPickUp {
+		actions = append(actions, pickUp)
+	}
 	d.logObjectsAtLocation(context, newPos)
 	return actions
+}
+
+// autoPickUpAt is what the player picking things up by walking over them means
+// now that walking is continuous: it hangs off arriving in a cell rather than
+// off ending a turn, because there are no turns left to end.
+func (d OnMoveHook) autoPickUpAt(context ActionContext, pos geometry.Point) (Action, bool) {
+	if !d.autoPickup {
+		return nil, false
+	}
+	state := context.GameState
+	player := state.GetPlayer()
+	if !state.GetMap().IsItemAt(pos) || !player.CanPickup() {
+		return nil, false
+	}
+	if state.GetMap().ItemAt(pos).IsDroppedByPlayer() {
+		return nil, false
+	}
+	return NewPickUpAction(AbstractCause("AutoPickup"), player), true
 }
 
 func (d OnMoveHook) logObjectsAtLocation(context ActionContext, pos geometry.Point) *Item {

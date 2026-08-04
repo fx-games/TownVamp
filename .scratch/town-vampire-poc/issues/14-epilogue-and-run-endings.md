@@ -21,11 +21,11 @@ per ADR 0002, and the ending must not smuggle one back in.
 
 **Blocked by:** 12 — Absence timer and Reassignment. 13 — Body discovery and the Hunter.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The player can leave town at any moment, ending the run
-- [ ] Starving, burning at dawn and being caught by a Hunter each end the run
-- [ ] The Epilogue shows one slide per Townsperson with their end state and what followed
-- [ ] The Epilogue shows one summary slide for the town
-- [ ] Slides are data readouts with no evaluation, score or judgement of the player
-- [ ] The Epilogue is reachable from any point in a run for testing
+- [x] The player can leave town at any moment, ending the run
+- [x] Starving, burning at dawn and being caught by a Hunter each end the run
+- [x] The Epilogue shows one slide per Townsperson with their end state and what followed
+- [x] The Epilogue shows one summary slide for the town
+- [x] Slides are data readouts with no evaluation, score or judgement of the player
+- [x] The Epilogue is reachable from any point in a run for testing

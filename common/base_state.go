@@ -14,9 +14,11 @@ import (
 )
 
 type PlayerActions interface {
-	EndTurn(autTaken int)
-
 	ManualMovePlayer(direction geometry.Point)
+
+	// SetWalkDirection is how the player moves now: free of the grid, one
+	// direction held rather than one step taken.
+	SetWalkDirection(direction geometry.PointF)
 
 	DropItem(item *Item)
 	EquipItem(item *Item)
@@ -28,7 +30,6 @@ type PlayerActions interface {
 
 	GetContextActionsForItem(item *Item) []util.MenuItem
 	PickUpItem()
-	RestUntilHealed()
 }
 type State struct {
 	currentMap     *gridmap.GridMap[*Actor, *Item, Object]
@@ -37,7 +38,6 @@ type State struct {
 	player         *Actor
 	camera         Camera
 	msg            func(string)
-	playerTookTurn func(int)
 
 	onMapChanged func(oldName, newName string)
 
@@ -111,10 +111,6 @@ func (s *State) GetVisibility() *Visibility {
 	return s.visibility
 }
 
-func (s *State) PlayerTookTurn(autUsed int) {
-	s.playerTookTurn(autUsed)
-}
-
 func (s *State) TransitionTo(dest gridmap.Transition) {
 	actionBroker := s.actions
 	actionBroker.Execute(NewTransitionAction(AbstractCause("Quick Travel"), dest))
@@ -167,9 +163,6 @@ func (s *State) SetPlayerMessage(msg func(string)) {
 	s.msg = msg
 }
 
-func (s *State) SetPlayerTurnHandler(playerTookTurn func(int)) {
-	s.playerTookTurn = playerTookTurn
-}
 func (s *State) SetTownMap(currentMap *gridmap.GridMap[*Actor, *Item, Object]) {
 	s.townMaps[currentMap.GetName()] = currentMap
 }
@@ -481,8 +474,7 @@ func (s *State) MapTransition(to gridmap.Transition) {
 		newlyLoadedMap.SetExplored(neighborOfStairs)
 	}
 	for _, actor := range newlyLoadedMap.Actors() {
-		actor.RemoveEnergy(actor.GetEnergy())
-		s.timekeeper.AddTimed(actor)
+		s.timekeeper.AddTimed(actor) // which is what sets them ready from now
 	}
 
 	if s.onMapChanged != nil {

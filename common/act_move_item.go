@@ -30,10 +30,6 @@ func (d *MoveItemAction) SetChanceToBreak(chance float64) {
 	d.chanceToBreak = chance
 }
 
-func (d *MoveItemAction) GetDelayInAut() int {
-	return 0
-}
-
 func (d *MoveItemAction) Execute(context ActionContext) []Action {
 	state := context.GameState
 	gameMap := state.GetMap() // read state

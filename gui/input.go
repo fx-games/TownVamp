@@ -20,6 +20,12 @@ type TextInputReceiver interface {
 	OnKeyPressed(key ebiten.Key, shiftPressed bool)
 	SetTick(tick uint64)
 }
+// npcNumberKeys are the keys that open a Townsperson's window, in the order of
+// the numbers they are listed under.
+var npcNumberKeys = [6]ebiten.Key{
+	ebiten.Key1, ebiten.Key2, ebiten.Key3, ebiten.Key4, ebiten.Key5, ebiten.Key6,
+}
+
 type MouseEvent int
 
 const (
@@ -44,14 +50,27 @@ const (
 	PlayerCommandOptions
 )
 
-func isBeingPressedRepeatedly(key ebiten.Key) bool {
-	pressedForTicks := inpututil.KeyPressDuration(key)
-	ticksBetweenMovement := 20
-	if pressedForTicks > 30 {
-		ticksBetweenMovement = 8
+// heldWalkDirection is the direction the player is pushing this tick. Opposite
+// keys cancel, adjacent keys give a diagonal, and a modal window means he is not
+// walking at all.
+func (u *UIController) heldWalkDirection() geometry.PointF {
+	if u.IsUIModalVisible() {
+		return geometry.PointF{}
 	}
-	isRepetitionTick := pressedForTicks > 0 && pressedForTicks%ticksBetweenMovement == 0
-	return inpututil.IsKeyJustPressed(key) || (ebiten.IsKeyPressed(key) && isRepetitionTick)
+	direction := geometry.PointF{}
+	if ebiten.IsKeyPressed(ebiten.KeyW) {
+		direction.Y--
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyS) {
+		direction.Y++
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyA) {
+		direction.X--
+	}
+	if ebiten.IsKeyPressed(ebiten.KeyD) {
+		direction.X++
+	}
+	return direction
 }
 
 func (u *UIController) handleKeyboardInput() {
@@ -71,6 +90,10 @@ func (u *UIController) handleKeyboardInput() {
 	//  - quick travel
 
 	act := u.context.PlayerAction()
+
+	// Held, not tapped, and read before any early return so that opening a menu
+	// mid-stride stops the player rather than leaving him walking.
+	act.SetWalkDirection(u.heldWalkDirection())
 
 	u.shiftIsBeingPressedThisTick = ebiten.IsKeyPressed(ebiten.KeyShift)
 
@@ -113,6 +136,13 @@ func (u *UIController) handleKeyboardInput() {
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyL) {
 		u.ShowLog()
+	}
+	// The number a Townsperson is listed under on the right is what the player
+	// asks about them by.
+	for index, key := range npcNumberKeys {
+		if inpututil.IsKeyJustPressed(key) {
+			u.OpenNPCWindow(index + 1)
+		}
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyX) {
 		u.mapRenderer.CenterOnFloat(u.context.GameState().GetPlayer().DrawPosition())
@@ -185,16 +215,6 @@ func (u *UIController) handleKeyboardInput() {
 
 	if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
 		u.mapRenderer.ScrollBy(geometry.Point{X: 0, Y: 8})
-	}
-
-	if isBeingPressedRepeatedly(ebiten.KeyW) {
-		act.ManualMovePlayer(geometry.Point{X: 0, Y: -1})
-	} else if isBeingPressedRepeatedly(ebiten.KeyS) {
-		act.ManualMovePlayer(geometry.Point{X: 0, Y: 1})
-	} else if isBeingPressedRepeatedly(ebiten.KeyA) {
-		act.ManualMovePlayer(geometry.Point{X: -1, Y: 0})
-	} else if isBeingPressedRepeatedly(ebiten.KeyD) {
-		act.ManualMovePlayer(geometry.Point{X: 1, Y: 0})
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyM) {

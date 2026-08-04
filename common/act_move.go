@@ -14,6 +14,15 @@ type MoveAction struct {
 	animationDelay            float64
 	isMovementVisibleToPlayer bool
 	animationDisabled         bool
+	keepDrawPosition          bool
+}
+
+// KeepDrawPosition leaves the actor where he is drawn. The free-walking player
+// owns his own position between cells, so his move action only hands the grid
+// its new occupant — it must neither snap him to the cell nor animate him into
+// it.
+func (d *MoveAction) KeepDrawPosition() {
+	d.keepDrawPosition = true
 }
 
 func (d *MoveAction) IsMovementVisibleToPlayer() bool {
@@ -37,11 +46,6 @@ func (d *MoveAction) SetAnimationDelay(delay float64) {
 	d.animationDelay = delay
 }
 
-func (d *MoveAction) GetDelayInAut() int {
-	autUsed := 100 / d.actor.GetMoveSpeed()
-	return autUsed
-}
-
 // PROBLEM: Since all enemy actions are triggered in one tick,
 // but the re-positioning of the actor takes place over multiple ticks,
 // all the following actors will have a false idea of the world state.
@@ -61,7 +65,7 @@ func (d *MoveAction) Execute(context ActionContext) []Action {
 		player := state.GetPlayer()
 		d.isMovementVisibleToPlayer = player.CanSee(d.GetOldPos()) || player.CanSee(d.GetNewPos())
 	}
-	if d.isNotAnimated() {
+	if d.isNotAnimated() && !d.keepDrawPosition {
 		actor.SetDrawPosition(d.targetPos.ToPointF())
 	}
 	//println(fmt.Sprintf("Actor %s moved to %s", actor.Action(), d.targetPos))
@@ -69,7 +73,7 @@ func (d *MoveAction) Execute(context ActionContext) []Action {
 }
 
 func (d *MoveAction) GetAnimations() []Animation {
-	if d.isNotAnimated() {
+	if d.isNotAnimated() || d.keepDrawPosition {
 		return nil
 	}
 	ticksNeeded := util.SecondsToTicks(d.animationDelay)

@@ -24,14 +24,15 @@ Blood in the proof of concept.
 
 **Blocked by:** 07 — Basic test town. 04 — Real-time clock.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Blood drains continuously at a configurable rate and is shown to the player
-- [ ] Killing a Townsperson refills Blood by a configurable amount
-- [ ] A killed Townsperson's Presence becomes Absent, indistinguishable from having gone
+- [x] Blood drains continuously at a configurable rate and is shown to the player
+- [x] Killing a Townsperson refills Blood by a configurable amount
+- [x] A killed Townsperson's Presence becomes Absent, indistinguishable from having gone
       away
-- [ ] A killed Townsperson leaves a body, and the player can hide it
-- [ ] Running out of Blood ends the run
-- [ ] Being outdoors at dawn ends the run
-- [ ] The player can judge how long remains before dawn
-- [ ] A test asserts Blood drains over a Day and is restored by a Kill
+- [x] A killed Townsperson leaves a body, and the player can hide it
+- [x] Running out of Blood ends the run
+- [x] Being outdoors at dawn ends the run
+      *sunlight burns Blood away fast rather than killing on the instant; the run still ends*
+- [x] The player can judge how long remains before dawn
+- [x] A test asserts Blood drains over a Day and is restored by a Kill

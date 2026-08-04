@@ -21,12 +21,15 @@ or go. Nothing else in this project works until it does.
 
 **Blocked by:** 02 — Demolish the RPG systems.
 
-**Status:** ready-for-agent
+**Status:** mostly-done
 
-- [ ] The simulation advances from the fixed-timestep update, not from a player action
+- [x] The simulation advances from the fixed-timestep update, not from a player action
 - [ ] The player is an ordinary timed being subject to the same energy rules as everyone
       else
-- [ ] Several actors can act and animate simultaneously without the action queue stalling
-- [ ] Per-actor speed, action cost in AUT and status ticking behave as they did before
-- [ ] The time of day advances continuously and is visible to the player
+      *superseded: the vampire walks continuously in `game/player_walk.go`, driven from `Advance` rather than from the TimeKeeper. Pace still comes from `common.SecondsPerStep` and his move speed, so he is on the same clock as everyone else*
+- [x] Several actors can act and animate simultaneously without the action queue stalling
+- [x] Per-actor speed, action cost in AUT and status ticking behave as they did before
+      *the AUT/energy model was replaced outright by seconds plus `ReadyAt` in `common/time_keeper.go`, not merely re-driven. Per-actor speed survives as `SecondsPerStep(moveSpeed)`; status ticking went with ticket 02*
+- [x] The time of day advances continuously and is visible to the player
 - [ ] The value of an AUT in seconds is configurable rather than hard-coded
+      *`BaseSecondsPerStep = 60.0` is a const in `common/time_keeper.go`. `TimeMultiplier` is configuration, but the step cost itself is not*

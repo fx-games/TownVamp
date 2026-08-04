@@ -22,16 +22,16 @@ Schedules rather than authoring them.
 
 **Blocked by:** 07 — Basic test town.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Obligations are authored in the record format, each pointing at a Townsperson or at
+- [x] Obligations are authored in the record format, each pointing at a Townsperson or at
       the town
-- [ ] Each Obligation is authored with both a performed appearance and an absent
+- [x] Each Obligation is authored with both a performed appearance and an absent
       appearance
-- [ ] A Townsperson's Schedule is derived from Routine plus Obligations, not authored
-- [ ] Schedules recompute at the Day boundary and never mid-slot
-- [ ] A Schedule is validated as physically walkable in the hours allowed, and an
+- [x] A Townsperson's Schedule is derived from Routine plus Obligations, not authored
+- [x] Schedules recompute at the Day boundary and never mid-slot
+- [x] A Schedule is validated as physically walkable in the hours allowed, and an
       infeasible one is reported at load rather than failing silently
-- [ ] The player can watch a Townsperson perform an Obligation and tell it apart from
+- [x] The player can watch a Townsperson perform an Obligation and tell it apart from
       their Routine
-- [ ] A test asserts a Townsperson performs an authored Obligation at the expected hour
+- [x] A test asserts a Townsperson performs an authored Obligation at the expected hour

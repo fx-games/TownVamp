@@ -17,7 +17,6 @@ type Factory struct {
 	state        *State
 	gui          func() UserInterface
 
-	getTimeKeeper  func() *TimeKeeper
 	logError       func(msg string)
 	queueAfterTurn func(func())
 }
@@ -28,19 +27,16 @@ type FactoryContext struct {
 	RandomSource *rand.Rand
 	State        *State
 
-	GetTimeKeeper func() *TimeKeeper
-
 	Msg func(msg string)
 }
 
 func NewFactory(context FactoryContext) *Factory {
 	return &Factory{
-		definitions:   context.Definitions,
-		randomSource:  context.RandomSource,
-		state:         context.State,
-		actionBroker:  context.ActionBroker,
-		getTimeKeeper: context.GetTimeKeeper,
-		logError:      context.Msg,
+		definitions:  context.Definitions,
+		randomSource: context.RandomSource,
+		state:        context.State,
+		actionBroker: context.ActionBroker,
+		logError:     context.Msg,
 	}
 }
 

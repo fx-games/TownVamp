@@ -170,7 +170,6 @@ put(14, 31, HAY)
 # paths off the main road into both fields, past the farmhouse and the barn
 vline(8, 12, 12, DIRT)
 vline(23, 12, 9, DIRT)
-vline(23, 21, 5, DIRT)
 
 building(20, 5, 8, 7)  # farmhouse
 put(23, 11, DOORWAY)
@@ -181,17 +180,23 @@ put(25, 8, CHAIR)
 put(26, 9, BASKET)
 put(21, 9, BUCKET)
 
-building(20, 25, 8, 7)  # barn
-put(23, 25, DOORWAY)
-scatter([(21, 26), (22, 26)], HAY)
-scatter([(24, 26), (25, 26)], SACK)
-put(26, 27, CRATE)
-put(25, 29, WHEELBARROW)
+# The barn sits north of the road between the vegetable field and the farmhouse.
+# It used to be at (20,25), underneath the cemetery — fenced(19,27,11,11) and its
+# grass fill are drawn afterwards and erased everything below y=27, leaving two
+# rows of wall and no building. Nothing addresses the barn by name in the routine
+# or obligation data, so moving it costs only its zone, its Location entity and
+# the waypoint below.
+building(9, 13, 8, 7)  # barn
+put(12, 19, DOORWAY)   # opens straight onto the main road at y=20
+scatter([(10, 14), (11, 14)], HAY)
+scatter([(13, 14), (14, 14)], SACK)
+put(15, 15, CRATE)
+put(14, 17, WHEELBARROW)
 
 scatter([(17, 15), (17, 3), (18, 14), (16, 34), (29, 14), (30, 4)], PINE)  # (17,16) is the lunch spot
 scatter([(18, 22), (29, 34)], BARE_TREE)
 scatter([(19, 18), (31, 13)], BOULDER)
-scatter([(15, 19), (30, 25), (44, 22)], PEBBLES)
+scatter([(17, 19), (30, 25), (44, 22)], PEBBLES)
 
 # --- inn -------------------------------------------------------------------
 building(30, 5, 11, 9)
@@ -352,7 +357,7 @@ while frontier:
 
 WAYPOINTS = {
     "vegetable_field": (8, 8), "grain_field": (8, 27), "farmhouse": (24, 8),
-    "farmer_bedroom": (22, 7), "barn": (23, 28), "inn": (37, 9),
+    "farmer_bedroom": (22, 7), "barn": (12, 16), "inn": (37, 9),
     "innkeeper_bedroom": (32, 7), "inn_cellar": (33, 11), "blacksmith": (46, 10),
     "smith_storage": (50, 7), "blacksmith_bedroom": (50, 11), "mill": (58, 11),
     "miller_bedroom": (56, 14), "carpenter_workshop": (47, 29),
@@ -364,6 +369,25 @@ WAYPOINTS = {
 unreachable = sorted(name for name, at in WAYPOINTS.items() if at not in reached)
 assert not unreachable, f"unreachable from the lair: {unreachable}"
 print(f"all {len(WAYPOINTS)} waypoints reachable")
+
+# --- check: every building still has its walls ------------------------------
+# The barn used to sit under the cemetery, which is drawn later and erased all
+# but two rows of it — a whole building quietly reduced to a sliver, and nothing
+# said so. Anything painted over a wall after the fact now fails here.
+WALLISH = {WALL_CORNER, WALL_V, WALL_H, WINDOW_H, WINDOW_V, DOORWAY}
+breached = []
+for bx, by, bw, bh in BUILDINGS:
+    ring = (
+        [(cx, by) for cx in range(bx, bx + bw)]
+        + [(cx, by + bh - 1) for cx in range(bx, bx + bw)]
+        + [(bx, cy) for cy in range(by, by + bh)]
+        + [(bx + bw - 1, cy) for cy in range(by, by + bh)]
+    )
+    holes = [(cx, cy) for cx, cy in ring if grid[cy][cx] not in WALLISH]
+    if holes:
+        breached.append(((bx, by, bw, bh), holes[:6]))
+assert not breached, f"buildings with walls painted over: {breached}"
+print(f"all {len(BUILDINGS)} buildings have intact walls")
 
 # --- check: every building still has a window -------------------------------
 # Doors, interior walls and props are all painted over the shell after it is

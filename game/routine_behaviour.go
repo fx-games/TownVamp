@@ -13,7 +13,7 @@ import (
 // comes from authored data, so changing what the town does means editing a
 // record file, not writing code — which is the property Obligations and
 // Reassignment will depend on in later tickets.
-func (g *GameInstance) getScheduledAction(actor *common.Actor) (int, func()) {
+func (g *GameInstance) getScheduledAction(actor *common.Actor) (float64, func()) {
 	if g.isHunter(actor) {
 		return g.getHunterAction(actor)
 	}
@@ -22,10 +22,7 @@ func (g *GameInstance) getScheduledAction(actor *common.Actor) (int, func()) {
 		return 0, nil // the player, and anyone else without a Routine
 	}
 
-	stepCost := 100 / actor.GetMoveSpeed()
-	if actor.GetEnergy() < stepCost {
-		return 0, nil // not enough time has passed for another step
-	}
+	stepCost := common.SecondsPerStep(actor.GetMoveSpeed())
 
 	slot, hasSlot := person.Schedule().EntryAt(g.state.GetClock().SecondsSinceMidnight())
 	if hasSlot {
@@ -74,7 +71,7 @@ func (g *GameInstance) hasArrivedAt(actor *common.Actor, destination geometry.Po
 
 // waitOneStep burns the same time a step would have taken. Without it a
 // Townsperson standing at their destination spins the energy loop forever.
-func waitOneStep(stepCost int) (int, func()) {
+func waitOneStep(stepCost float64) (float64, func()) {
 	return stepCost, func() {}
 }
 
@@ -183,7 +180,7 @@ func (g *GameInstance) privateActionIsWatched(actor *common.Actor, entry common.
 // seekPrivacy is what a Townsperson does when they notice the wrong person can
 // see them: refrain, and move somewhere unobserved if such a place is reachable.
 // The duty is postponed, not abandoned — they will try again while the hour lasts.
-func (g *GameInstance) seekPrivacy(actor *common.Actor, entry common.ScheduleEntry, intruder *common.Actor, stepCost int) (int, func()) {
+func (g *GameInstance) seekPrivacy(actor *common.Actor, entry common.ScheduleEntry, intruder *common.Actor, stepCost float64) (float64, func()) {
 	if g.state.GetPlayer().CanSee(actor.MapPosition()) {
 		g.noteInterrupted(actor, entry)
 	}

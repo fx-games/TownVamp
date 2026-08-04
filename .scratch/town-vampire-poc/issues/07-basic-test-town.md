@@ -24,13 +24,16 @@ No Obligations yet. This ticket is Routines only.
 
 **Blocked by:** 06 — Townsperson, Role and Routine.
 
-**Status:** ready-for-agent
+**Status:** mostly-done
 
-- [ ] Six Townspeople live in the existing town map, each with a Role and a Routine
-- [ ] At least four of the five Roles are represented
-- [ ] All six move on their Routines unattended while the player stands still
-- [ ] Routines vary in density, including at least one notably light and one notably heavy
-- [ ] Every Townsperson is authored in the record format, with no behaviour hard-coded
+- [x] Six Townspeople live in the existing town map, each with a Role and a Routine
+- [x] At least four of the five Roles are represented
+      *all five are, with farmer held twice*
+- [x] All six move on their Routines unattended while the player stands still
+- [x] Routines vary in density, including at least one notably light and one notably heavy
+- [x] Every Townsperson is authored in the record format, with no behaviour hard-coded
 - [ ] Existing town inhabitants are reused rather than replaced, with vendor and quest
       identities removed
+      *kirioth, shekel, abel and mary are gone from `maps.ldtk`; the six entities are named elias, martin, greta, otto, marta and aldren*
 - [ ] A test advances several Days and asserts the town returns to a stable daily rhythm
+      *no multi-Day rhythm test exists*

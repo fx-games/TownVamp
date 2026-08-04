@@ -26,7 +26,7 @@ belongs_to: elias
 
 name: The barn
 type: private
-rect: 20,25,8,7
+rect: 9,13,8,7
 belongs_to: elias
 
 name: The mill

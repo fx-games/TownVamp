@@ -129,7 +129,6 @@ type Action interface {
 	Name() ActionName
 	Execute(context ActionContext) []Action
 	GetAnimations() []Animation
-	GetDelayInAut() int
 }
 
 func OneAction(action Action) []Action {

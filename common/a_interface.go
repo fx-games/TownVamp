@@ -21,10 +21,6 @@ func (d *BaseAction) GetAnimations() []Animation {
 	return nil
 }
 
-func (d *BaseAction) GetDelayInAut() int {
-	return 10
-}
-
 type BaseActionHook struct {
 	hookedAction ActionName
 }

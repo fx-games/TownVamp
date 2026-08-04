@@ -30,6 +30,10 @@ type Actor struct {
 	cp437Icon    int32
 	corpseIcon   int32
 	fov          *geometry.FOV
+
+	// life is set only for the vampire. Where everyone else has a health
+	// resource, he has Blood, and it is the whole of his condition.
+	life *Blood
 	name         string
 
 	inventory                 *Inventory
@@ -38,7 +42,10 @@ type Actor struct {
 	isAnimatingMovement       bool
 
 	stats      stats.AttributeHolder
-	timeEnergy int
+	// readyAtSecond is when this actor may act again, in in-game seconds since
+	// the run began. The world runs on a clock now; there is no action economy
+	// to save up.
+	readyAtSecond float64
 
 	state ActorState
 
@@ -91,9 +98,12 @@ func (a *Actor) GetHurtTicksAsPercentage() float64 {
 func (a *Actor) IsHurt() bool {
 	return a.hurtTicks > 0
 }
-func (a *Actor) AddEnergy(energy int) {
-	//println(fmt.Sprintf("%s restored %d energy", a.name, energy))
-	a.timeEnergy += energy
+func (a *Actor) ReadyAt() float64 {
+	return a.readyAtSecond
+}
+
+func (a *Actor) SetReadyAt(second float64) {
+	a.readyAtSecond = second
 }
 
 func NewActor(icon int32) *Actor {
@@ -126,8 +136,19 @@ func (a *Actor) SetIcon(newIcon int32) {
 	a.icon = newIcon
 }
 
+// IsAlive is what the whole world asks about anyone. The vampire has no health:
+// his Blood is his life, and it running out is the only way he dies.
 func (a *Actor) IsAlive() bool {
+	if a.life != nil {
+		return !a.life.IsEmpty()
+	}
 	return a.GetStats().GetResource(stats.Health).IsPositive()
+}
+
+// SetLife hands an actor a Blood pool to live off instead of a health bar. Only
+// the vampire has one.
+func (a *Actor) SetLife(life *Blood) {
+	a.life = life
 }
 
 func (a *Actor) Name() string {
@@ -194,16 +215,6 @@ func (a *Actor) SetMovingAnimation(isAnimatingMovement bool) {
 
 func (a *Actor) SetName(name string) {
 	a.name = name
-}
-
-func (a *Actor) GetEnergy() int {
-	return a.timeEnergy
-}
-
-func (a *Actor) RemoveEnergy(energy int) {
-	a.timeEnergy -= energy
-	//println(fmt.Sprintf("%s used %d energy", a.name, energy))
-	a.BeforeTurn()
 }
 
 func (a *Actor) GetAttackSpeed(attackType AttackType) int {
@@ -565,6 +576,13 @@ func (a *Actor) CanUseItems() bool {
 }
 
 func (a *Actor) GetFullStats() []util.LabelText {
+	if a.life != nil {
+		// The vampire has no stat block. He has an appetite and a deadline.
+		return []util.LabelText{
+			{Text: a.life.String(), TextColor: defs.DarkTextColor},
+			{Text: fmt.Sprintf("Days left: %.1f", a.life.DaysRemaining()), TextColor: defs.DarkTextColor},
+		}
+	}
 	ourStats := a.GetStats()
 	var hpColor color.Color
 	var manaColor color.Color
@@ -687,7 +705,7 @@ func (a *Actor) Clone() *Actor {
 		equipment:      NewEquipment(),
 		statusEffects:  NewFlags(),
 		stats:          a.stats.Clone(),
-		timeEnergy:     a.timeEnergy,
+		readyAtSecond:  a.readyAtSecond,
 		state:          a.state,
 		isVendorOfType: a.isVendorOfType,
 		isHostile:      a.isHostile,

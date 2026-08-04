@@ -62,6 +62,9 @@ func (g *GameInstance) populateTown() {
 	sort.Slice(g.townspeople, func(i, j int) bool {
 		return g.townspeople[i].InternalName < g.townspeople[j].InternalName
 	})
+	for i, person := range g.townspeople {
+		person.Number = i + 1
+	}
 
 	obligations := g.loadObligations(people, namedLocation)
 	g.loadZones()
@@ -92,8 +95,7 @@ func (g *GameInstance) checkSchedulesAreWalkable() {
 		if len(path) == 0 {
 			return 0, false
 		}
-		// A step costs 10 AUT, and an AUT is SecondsPerAut in-game seconds.
-		return float64(len(path)) * 10 * common.SecondsPerAut, true
+		return float64(len(path)) * common.BaseSecondsPerStep, true
 	}
 
 	for _, actor := range currentMap.Actors() {

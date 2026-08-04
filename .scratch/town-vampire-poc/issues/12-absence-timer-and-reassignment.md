@@ -27,14 +27,21 @@ the town is fully authored.
 
 **Blocked by:** 08 — Obligations and derived Schedule. 11 — The vampire.
 
-**Status:** ready-for-agent
+**Status:** mostly-done
 
-- [ ] Reassignment does not fire before a full Day of Absence, and does fire after
-- [ ] Candidates are tried pointed-at first, then Role-compatible
-- [ ] A candidate without free hours cannot take an Obligation
-- [ ] An Obligation nobody can take goes Unmet permanently and is never revisited
-- [ ] A taker's existing Obligations are untouched
+- [x] Reassignment does not fire before a full Day of Absence, and does fire after
+- [x] Candidates are tried pointed-at first, then Role-compatible
+- [x] A candidate without free hours cannot take an Obligation
+      *implemented in `canTake`; no test covers it*
+- [x] An Obligation nobody can take goes Unmet permanently and is never revisited
+- [x] A taker's existing Obligations are untouched
+      *implemented; no test covers it*
 - [ ] Every Unmet Obligation is visible in the town, not merely recorded
+      *THE OPEN RISK. The absent face reaches the player as a message-log line from
+      `showUnmetObligations`, not as a thing in the town — no unlit lamp, no unopened
+      stall, no one waiting at a door.*
 - [ ] Successive deaths are absorbed less well as spare capacity is consumed
+      *emergent from the capacity rule, but never demonstrated or tested*
 - [ ] Tests cover the ordering, the capacity limit, the permanence of Unmet, and the
       accelerating failure across several deaths
+      *ordering and the permanence of Unmet are covered; the capacity limit and the accelerating failure across several deaths are not*

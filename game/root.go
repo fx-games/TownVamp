@@ -81,6 +81,7 @@ type GameInstance struct {
 	bodies          map[string]geometry.Point
 	ending          RunEnding
 	warnedAboutDawn bool
+	isBurning       bool
 	zones           []*TownZone
 	hunter          *common.Actor
 	privacyRefuge   map[string]geometry.Point
@@ -198,12 +199,11 @@ func NewGameInstance(startInfo common.StartInfo, uiController common.UserInterfa
 	return g
 }
 
-func (g *GameInstance) hasEnergyForAction(being common.TimedBeing) (int, func()) {
-	switch typedBeing := being.(type) {
-	case *common.Actor:
-		return g.getScheduledAction(typedBeing)
-	case Turner:
-		return g.getTurnerAction(being.GetBaseSpeed(), being.GetEnergy(), typedBeing)
+// nextActionFor is what the TimeKeeper asks of everyone it moves: what they do
+// next and how many in-game seconds it costs them.
+func (g *GameInstance) nextActionFor(being common.TimedBeing) (float64, func()) {
+	if actor, isActor := being.(*common.Actor); isActor {
+		return g.getScheduledAction(actor)
 	}
 	return 0, nil
 }
@@ -260,7 +260,7 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	ldtkFile, _ := files.ReadFile(ldtkFileName)
 	ldtkProject, _ := ldtk.Open(ldtkFile)
 
-	timeKeeper := common.NewTimeKeeper(g.hasEnergyForAction)
+	timeKeeper := common.NewTimeKeeper(g.nextActionFor)
 	println(fmt.Sprintf("Timekeeper created.."))
 
 	g.state = common.NewState(ldtkProject)
@@ -287,29 +287,26 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	g.actionBroker.RegisterHook(common.NewMainOnEquipHook())
 
 	g.factory = common.NewFactory(common.FactoryContext{
-		Definitions:   g.dataDefinitions,
-		RandomSource:  g.randomSource,
-		State:         g.GetWorldState(),
-		ActionBroker:  g.actionBroker,
-		GetTimeKeeper: g.state.GetTimeKeeper,
-		Msg:           g.PlayerMessage,
+		Definitions:  g.dataDefinitions,
+		RandomSource: g.randomSource,
+		State:        g.GetWorldState(),
+		ActionBroker: g.actionBroker,
+		Msg:          g.PlayerMessage,
 	})
 	g.factory.SetUserInterface(g.GetUserInterface)
 	g.factory.SetQueueAfterTurn(g.queueAfterTurn)
 
 	g.state.SetPlayerMessage(g.PlayerMessage)
-	g.state.SetPlayerTurnHandler(g.onPlayerActed)
 	g.state.SetAnimator(g.actionBroker)
 	g.state.SetActionBroker(g.actionBroker)
 	g.state.SetFactory(g.factory)
 
-	g.createPlayer(playerStartDefinition)
+	g.createPlayer()
 	g.actions = NewActions(PlayerActionsContext{
 		Player:         g.state.GetPlayer(),
 		ActionBroker:   g.actionBroker,
 		State:          g.GetWorldState(),
 		UI:             g.GetUserInterface,
-		GetTimeKeeper:  g.state.GetTimeKeeper,
 		Msg:            g.PlayerMessage,
 		Animator:       g.actionBroker,
 		Speak:          g.ActorSpeak,
@@ -439,8 +436,8 @@ func (g *GameInstance) Advance(inGameSeconds float64) {
 
 	player := g.state.GetPlayer()
 	if player != nil && player.IsAlive() {
-		player.BeforeTurn()
 		g.handleLightSource()
+		g.actions.walkPlayer(scaled)
 		g.actions.nextStepOnPlayerPath()
 	}
 
@@ -473,23 +470,6 @@ func (g *GameInstance) TogglePause() bool {
 	return g.isPaused
 }
 
-// onPlayerActed charges the player for something they chose to do. It no longer
-// moves the world; the world moves on its own.
-func (g *GameInstance) onPlayerActed(autUsed int) {
-	player := g.state.GetPlayer()
-	if player == nil {
-		return
-	}
-	player.RemoveEnergy(autUsed)
-
-	if g.configuration.AutoPickup && g.state.GetMap().IsItemAt(player.MapPosition()) {
-		itemAtLocation := g.state.GetMap().ItemAt(player.MapPosition())
-		if itemAtLocation != nil && player.CanPickup() && !itemAtLocation.IsDroppedByPlayer() {
-			g.actionBroker.Execute(common.NewPickUpAction(common.AbstractCause("AutoPickup"), player))
-		}
-	}
-}
-
 func (g *GameInstance) procFireAtLocation(location geometry.Point, startAnimating func() bool) {
 	if g.state.GetMap().IsActorAt(location) {
 		actor := g.state.GetMap().ActorAt(location)
@@ -503,25 +483,21 @@ func (g *GameInstance) updateStatsDisplay() {
 	g.sendStatsToWindowClient()
 }
 
-func (g *GameInstance) createPlayer(playerStartDefinition defs.LoadoutDefinition) *common.Actor {
-	player := common.NewActor(playerStartDefinition.Icon)
+// createPlayer takes nothing from the class loadout any more. The vampire has
+// his own sprite and no stat block, so there is nothing left of the dungeon
+// crawler's classes for him to be built out of.
+func (g *GameInstance) createPlayer() *common.Actor {
+	player := common.NewActor(defs.IconVampire)
 	player.SetAsciiIcon('@')
 	player.SetCP437Icon(int32(util.UnicodeToCP437Byte('☺')))
 	player.SetColor(defs.White)
 	player.SetName("Player")
 	g.state.SetPlayer(player)
 
-	playerStats := player.GetStats()
-	for attr, value := range playerStartDefinition.Attributes {
-		playerStats.SetAttributeAsFloat(stats.StatFromString(attr), value)
-	}
-	for resourceName, value := range playerStartDefinition.Resources {
-		maxAttributeName := "max_" + resourceName
-		playerStats.SetAttributeAsFloat(stats.StatFromString(maxAttributeName), value)
-		playerStats.GetResource(stats.StatFromString(resourceName)).SetToMax()
-	}
-	// Gold
-	playerStats.SetAttribute(stats.Gold, playerStartDefinition.Gold)
+	// He is described entirely by his Blood, which is his health, his clock and
+	// his motive at once. What is left in the attribute holder is engine
+	// plumbing — how fast he walks, how far he sees.
+	player.SetLife(g.blood)
 	player.GetStats().SetOnChangeHandler(g.updateStatsDisplay)
 	player.GetEquipment().SetOnChangeHandler(g.sendEquipmentToWindowClient)
 	player.GetInventory().SetOnChangeHandler(g.sendInventoryToWindowClient)
@@ -554,7 +530,6 @@ func (g *GameInstance) killLevel() {
 	}
 }
 
-// getAIAction returns the action to execute and the cost in AUT associated with it
 func (g *GameInstance) TransferRandomEnchantment(source *common.Item, destination *common.Item) {
 	enchantments := source.GetAllEnchantments()
 
@@ -614,18 +589,6 @@ func (g *GameInstance) ensureVendorInventory(actor *common.Actor) {
 	}
 }
 
-type Turner interface {
-	Turn()
-}
-
-func (g *GameInstance) getTurnerAction(baseSpeed int, energy int, being Turner) (int, func()) {
-	cost := 100 / baseSpeed
-	if energy < cost {
-		return 0, nil
-	}
-	return baseSpeed, being.Turn
-}
-
 func (g *GameInstance) getDisplacePositionForActor(victimToDisplace *common.Actor, direction geometry.Point) geometry.Point {
 	currentMap := g.state.GetMap()
 	victimPos := victimToDisplace.MapPosition()
@@ -651,13 +614,6 @@ func (g *GameInstance) getDisplacePositionForActor(victimToDisplace *common.Acto
 	// return source
 	behindUs := victimPos.Add(direction.Mul(-1))
 	return behindUs
-}
-
-func (g *GameInstance) checkForLevelUp() {
-	if !g.state.GetPlayer().CanLevelUp() {
-		return
-	}
-	g.GetAudio().PlayCue("levelup")
 }
 
 func (g *GameInstance) sendStatsToWindowClient() {

@@ -17,14 +17,22 @@ type Blood struct {
 
 	// RestoredByAKill is what draining one Townsperson is worth.
 	RestoredByAKill float64
+
+	// SunlightDrainFactor is how much faster Blood burns away in the open by
+	// day. Sunlight does not kill outright — it puts the vampire on a much
+	// shorter clock, so being caught out at dawn is a scramble for shelter
+	// rather than a full stop. At this factor a full pool lasts about half an
+	// in-game hour of exposure.
+	SunlightDrainFactor float64
 }
 
 func NewBlood() *Blood {
 	return &Blood{
-		current:         100,
-		maximum:         100,
-		DrainPerDay:     40, // roughly two and a half Days from full
-		RestoredByAKill: 60,
+		current:             100,
+		maximum:             100,
+		DrainPerDay:         40, // roughly two and a half Days from full
+		RestoredByAKill:     60,
+		SunlightDrainFactor: 120,
 	}
 }
 
@@ -33,6 +41,11 @@ func (b *Blood) Drain(inGameSeconds float64) {
 	if b.current < 0 {
 		b.current = 0
 	}
+}
+
+// DrainInSunlight is Drain at the daylight rate.
+func (b *Blood) DrainInSunlight(inGameSeconds float64) {
+	b.Drain(inGameSeconds * b.SunlightDrainFactor)
 }
 
 func (b *Blood) Feed() {

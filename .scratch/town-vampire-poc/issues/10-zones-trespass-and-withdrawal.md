@@ -21,13 +21,14 @@ intended shape of the pressure — a slow tightening, never a loud event.
 
 **Blocked by:** 07 — Basic test town. 09 — Private Actions and seeking privacy.
 
-**Status:** ready-for-agent
+**Status:** mostly-done
 
 - [ ] Zone permissions are read from the existing map format and authored on the map
-- [ ] A Townsperson who sees the vampire in a Zone where he does not belong flees
-- [ ] That Townsperson postpones any Private Action they were about to perform
-- [ ] That Townsperson thereafter spends measurably more of their day indoors and in
+      *zones are authored in `files/assets/data/zones.rec` and painted onto the map's zone layer at load, because the map's own zone layer was empty*
+- [x] A Townsperson who sees the vampire in a Zone where he does not belong flees
+- [x] That Townsperson postpones any Private Action they were about to perform
+- [x] That Townsperson thereafter spends measurably more of their day indoors and in
       private Zones
-- [ ] No alarm is raised and no other Townsperson is informed
-- [ ] Withdrawal persists for the rest of the run
-- [ ] A test asserts a Townsperson's indoor hours increase after witnessing a trespass
+- [x] No alarm is raised and no other Townsperson is informed
+- [x] Withdrawal persists for the rest of the run
+- [x] A test asserts a Townsperson's indoor hours increase after witnessing a trespass

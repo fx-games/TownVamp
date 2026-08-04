@@ -93,6 +93,9 @@ func (u *UIController) drawActors() {
 		if !visibleMapOnScreen.Contains(actor.MapPosition()) || !playerFieldOfView.Visible(actor.MapPosition()) {
 			continue
 		}
+		if actor == player {
+			continue // the vampire has no health bar; his Blood is in the status panel
+		}
 		if !actor.GetStats().GetResource(stats.Health).IsAtMax() {
 			u.drawHealthBar(actor)
 		}

@@ -12,10 +12,13 @@ rewriting it later would be worse than carrying it unreferenced now.
 
 **Blocked by:** 02 — Demolish the RPG systems.
 
-**Status:** ready-for-agent
+**Status:** mostly-done
 
-- [ ] No inventory, equipment or shop interface is reachable by any input
-- [ ] Talking to a Townsperson opens no vending options
-- [ ] Item, inventory, equipment and vendor code still compiles
+- [x] No inventory, equipment or shop interface is reachable by any input
+- [x] Talking to a Townsperson opens no vending options
+      *`PlayerMoveStep` only raises `TalkToAction` for `IsVendor()`, and `populateTown` sets every Townsperson to `VendorTypeNone`*
+- [x] Item, inventory, equipment and vendor code still compiles
 - [ ] Automatic item pickup no longer runs
-- [ ] Nothing in the interface refers to items, gold or equipment
+      *`config.rec` still ships `AutoPickup: true`, and both `game/player_actions.go:238` and the on-move hook act on it*
+- [x] Nothing in the interface refers to items, gold or equipment
+      *the sidebar inventory grid was the last one; removed with the minimap move*

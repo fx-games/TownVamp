@@ -16,7 +16,6 @@ import (
 	"rpg/stats"
 	"rpg/util"
 	"slices"
-	"strings"
 )
 
 type TilemapAnimInfo struct {
@@ -94,13 +93,11 @@ type UIController struct {
 	uiBarWidth               int
 	elevatedOverlay          UIWidget
 
-	statsLabel    *BasicLabel
-	levelUpButton *ButtonOverlay
-	inventory     *IconOverlay
-	skills        *IconOverlay
-	timer         *IconOverlay
-	miniMap       *MinimapOverlay
-	message       PrintMessage
+	statsLabel *BasicLabel
+	inventory  *IconOverlay
+	npcList    *NPCList
+	miniMap    *MinimapOverlay
+	message    PrintMessage
 
 	configuration common.Configuration
 
@@ -110,6 +107,11 @@ type UIController struct {
 	worldTicks       uint64
 	shouldQuitGame   bool
 	mousePosInPixels geometry.Point
+
+	// lastPlayerTile is what tells a tick where the player moved from one where
+	// he only stood there. Most of the per-turn UI work is a function of the
+	// player's grid position and nothing else.
+	lastPlayerTile geometry.Point
 
 	tilemapAnimations          map[int32]TilemapAnimInfo
 	deviceDPIScale             float64
@@ -399,20 +401,6 @@ func (u *UIController) OpenInventoryListModal(tileSize geometry.Point, dataSourc
 	return inventory
 }
 
-func (u *UIController) OpenSkillsOverlay(pos, tileSize geometry.Point, dataSource IconDataSource) *IconOverlay {
-	skills := NewIconOverlay(u, pos, tileSize, dataSource)
-	skills.SetShowEmptySlots(false)
-	u.PushOverlay(skills)
-	return skills
-}
-func (u *UIController) OpenTimerOverlay(pos, tileSize geometry.Point, dataSource IconDataSource) *IconOverlay {
-	timer := NewIconOverlay(u, pos, tileSize, dataSource)
-	timer.SetShowEmptySlots(false)
-	timer.SetShowCounter(true)
-	u.PushOverlay(timer)
-	return timer
-}
-
 func (u *UIController) AddButton(offsetFromTopRightCorner, tileSize geometry.Point, icon int32, onClick func()) *ButtonOverlay {
 	button := NewIconButton(u, offsetFromTopRightCorner, tileSize, icon)
 	button.SetAction(onClick)
@@ -428,8 +416,8 @@ func (u *UIController) SetUIBarWidth(uiBarWidth int) *ColoredRect {
 	return background
 }
 
-func (u *UIController) AddMinimap(offsetFromTopRightCorner geometry.Point, maxHeight, availableWidth int, miniMapImage *ebiten.Image) *MinimapOverlay {
-	minimap := NewMiniMap(u, offsetFromTopRightCorner, maxHeight, availableWidth, miniMapImage)
+func (u *UIController) AddMinimap(offsetFromBottomRightCorner geometry.Point, maxHeight, availableWidth int, miniMapImage *ebiten.Image) *MinimapOverlay {
+	minimap := NewMiniMap(u, offsetFromBottomRightCorner, maxHeight, availableWidth, miniMapImage)
 	u.InsertOverlayAtIndex(1, minimap)
 	return minimap
 }
@@ -543,6 +531,9 @@ func (u *UIController) ParseColorCodedText(colorCodedText string) []util.Colored
 }
 
 func (u *UIController) OpenStash(playerInv *common.Inventory, stashInTown *common.Inventory, drop func(item *common.Item)) {
+	if u.inventory == nil {
+		return // the vampire has no inventory panel to stash from
+	}
 	player := u.context.GameState().GetPlayer()
 	toStashHandler := func(uiItem UIElement) {
 		playerEquip := player.GetEquipment()
@@ -601,43 +592,70 @@ func (u *UIController) OpenStash(playerInv *common.Inventory, stashInTown *commo
 	stashInv.SetOnCloseHandler(onClose)
 }
 
+// uiBarWidthInPixels is the width the sidebar used to inherit from the inventory
+// grid that lived in it.
+const uiBarWidthInPixels = 275
+
 func (u *UIController) setupUI() {
 	u.overlays = []UIWidget{}
 	u.modal = nil
 
 	paddingLeftAndRight := 6
-	u.inventory = u.addInventoryOverlay(geometry.Point{X: paddingLeftAndRight, Y: 10})
-	inventoryBoxSize := u.inventory.GetBounds().Size()
-
-	u.uiBarWidth = inventoryBoxSize.X + (2 * paddingLeftAndRight)
+	u.uiBarWidth = uiBarWidthInPixels
 	u.SetUIBarWidth(u.uiBarWidth)
 	xOffset := u.uiBarWidth - paddingLeftAndRight
 	u.statsLabel = u.AddLabel(geometry.Point{X: xOffset, Y: paddingLeftAndRight})
 	u.statsLabel.SetText(util.ToLabelText([]string{ // hacky way to measure the right bounding box..
-		"Level 1",
-		"MoreInfo",
-		"Health: 999",
-		"Mana: 999",
-		"Gold: 999",
+		"Day 88, 88:88",
+		"Blood: 100%",
+		"60 fps / 60 tps",
 	}))
 	statsBounds := u.statsLabel.GetBounds()
-	levelUpButtonY := statsBounds.Max.Y + paddingLeftAndRight*2
 
-	u.levelUpButton = u.addLevelUpButton(geometry.Point{X: xOffset, Y: levelUpButtonY})
-	buttonBounds := u.levelUpButton.GetBounds()
+	u.npcList = NewNPCList(u, geometry.Point{X: xOffset, Y: statsBounds.Max.Y + paddingLeftAndRight*2})
+	u.PushOverlay(u.npcList)
 
-	u.skills = u.addSkillsOverlay(geometry.Point{X: paddingLeftAndRight, Y: 180})
-	skillBounds := u.skills.GetBounds()
-
-	topYForMap := buttonBounds.Max.Y + paddingLeftAndRight
-	bottomYForMap := skillBounds.Min.Y - paddingLeftAndRight
-	maxHeightForMap := bottomYForMap - topYForMap
-
-	u.miniMap = u.addMiniMap(geometry.Point{X: u.uiBarWidth, Y: topYForMap}, maxHeightForMap, paddingLeftAndRight)
-
-	u.timer = u.addTimerOverlay(geometry.Point{X: paddingLeftAndRight, Y: 360})
+	// The minimap sits at the foot of the bar, where the inventory grid was.
+	maxHeightForMap := u.GetDeviceIndependentScreenSize().Y / 2
+	u.miniMap = u.addMiniMap(geometry.Point{X: u.uiBarWidth, Y: paddingLeftAndRight}, maxHeightForMap, paddingLeftAndRight)
 
 	u.OnScreenSizeChanged()
+}
+
+// OpenNPCWindow shows what the player knows about the Townsperson holding that
+// number. A number nobody currently in view holds does nothing — the list on the
+// right is the whole of what he can ask about.
+func (u *UIController) OpenNPCWindow(number int) {
+	for _, actor := range u.watchedTownspeople() {
+		if actor.GetTownsperson().Number == number {
+			u.PushWidget(NewNPCWindow(u, actor))
+			return
+		}
+	}
+}
+
+// watchedTownspeople are the Townspeople the player can actually watch right
+// now: on the part of the map being rendered, and inside his field of view.
+func (u *UIController) watchedTownspeople() []*common.Actor {
+	state := u.context.GameState()
+	player := state.GetPlayer()
+	fieldOfView := player.GetFOV()
+	onScreen := u.mapRenderer.GetVisibleMap()
+
+	var watched []*common.Actor
+	for _, actor := range state.GetMap().Actors() {
+		if actor == player || actor.GetTownsperson() == nil || !actor.IsVisible() {
+			continue
+		}
+		if !onScreen.Contains(actor.MapPosition()) || !fieldOfView.Visible(actor.MapPosition()) {
+			continue
+		}
+		watched = append(watched, actor)
+	}
+	slices.SortFunc(watched, func(a, b *common.Actor) int {
+		return a.GetTownsperson().Number - b.GetTownsperson().Number
+	})
+	return watched
 }
 
 func (u *UIController) addInventoryOverlay(pixelEdgeFromBottomRight geometry.Point) *IconOverlay {
@@ -721,19 +739,11 @@ func (u *UIController) onItemInInventoryClicked(uiItem UIElement) {
 	u.OpenMenu(contextActions)
 }
 func (u *UIController) ShowFullStats() {
-	u.levelUpButton.Hide()
 	u.miniMap.Hide()
 	label := u.statsLabel
 
 	player := u.context.GameState().GetPlayer()
 	label.SetText(player.GetFullStats())
-}
-
-func (u *UIController) addLevelUpButton(offset geometry.Point) *ButtonOverlay {
-	button := u.AddButton(offset, u.worldTexture.GetTileSize(), 141, u.openLevelUpMenu)
-	button.SetTooltip("Level up")
-	button.Hide()
-	return button
 }
 func (u *UIController) BeginPlayerSellingTo(vendor *common.Actor) {
 	player := u.context.GameState().GetPlayer()
@@ -792,122 +802,12 @@ func (u *UIController) BeginPlayerSellingTo(vendor *common.Actor) {
 	menu.SetHeader("You have:", fmt.Sprintf("%d gold", goldAmount))
 	menu.SetItems(sellItems, []Alignment{AlignmentLeft, AlignmentRight})
 }
-func (u *UIController) openLevelUpMenu() {
-	player := u.context.GameState().GetPlayer()
-	if !player.CanLevelUp() {
-		return
-	}
-	audioPlayer := u.context.AudioPlayer
-	u.levelUpButton.Hide()
-	u.ShowFullStats()
-	u.OpenMenu([]util.MenuItem{
-		{
-			MainText: "STR",
-			Action: func() {
-				player.LevelUp(stats.Strength)
-				if player.CanLevelUp() {
-					audioPlayer.PlayCue("levelup")
-					u.openLevelUpMenu()
-				} else {
-					u.levelUpButton.Hide()
-					u.ShowFullStats()
-				}
-			},
-		},
-		{
-			MainText: "DEX",
-			Action: func() {
-				player.LevelUp(stats.Dexterity)
-				if player.CanLevelUp() {
-					audioPlayer.PlayCue("levelup")
-					u.openLevelUpMenu()
-				} else {
-					u.levelUpButton.Hide()
-					u.ShowFullStats()
-				}
-			},
-		},
-		{
-			MainText: "INT",
-			Action: func() {
-				player.LevelUp(stats.Intelligence)
-				if player.CanLevelUp() {
-					audioPlayer.PlayCue("levelup")
-					u.openLevelUpMenu()
-				} else {
-					u.levelUpButton.Hide()
-					u.ShowFullStats()
-				}
-			},
-		},
-	})
-}
 func (u *UIController) addMiniMap(offset geometry.Point, maxHeight int, horizontalPadding int) *MinimapOverlay {
 	miniMap := u.AddMinimap(offset.Sub(geometry.Point{X: horizontalPadding}), maxHeight, offset.X-(horizontalPadding*2), u.mapRenderer.GetMiniMap())
 	miniMap.SetOnMapClickedHandler(u.onMapClicked)
 	return miniMap
 }
 
-func (u *UIController) addSkillsOverlay(pixelEdgeFromBottomRight geometry.Point) *IconOverlay {
-	tileSize := u.worldTexture.GetTileSize()
-	state := u.context.GameState()
-	getList := func() []UIElement {
-		player := state.GetPlayer()
-		items := make([]UIElement, 0)
-		for _, item := range u.GetActiveSkillsForUI(player) {
-			items = append(items, item)
-		}
-		return items
-	}
-	isEquipped := func(item UIElement) bool {
-		return false // TODO:
-	}
-
-	dataSource := IconDataSource{
-		IsHighlighted: isEquipped,
-		GetElements:   getList,
-		OnSelection: func(element UIElement) {},
-	}
-
-	return u.OpenSkillsOverlay(pixelEdgeFromBottomRight, tileSize, dataSource)
-}
-func (u *UIController) GetActiveSkillsForUI(player *common.Actor) []UIElement {
-	var activeSkills []UIElement
-	_ = player
-	return activeSkills
-}
-
-func (u *UIController) addTimerOverlay(pixelEdgeFromBottomRight geometry.Point) *IconOverlay {
-	tileSize := u.worldTexture.GetTileSize()
-
-	isEquipped := func(item UIElement) bool {
-		return false // TODO:
-	}
-
-	dataSource := IconDataSource{
-		IsHighlighted: isEquipped,
-		GetElements:   u.getCurrentTimedEffects,
-		OnSelection: func(element UIElement) {
-		},
-	}
-
-	return u.OpenTimerOverlay(pixelEdgeFromBottomRight, tileSize, dataSource)
-}
-func (u *UIController) getCurrentTimedEffects() []UIElement {
-	var result []UIElement
-	for _, timedBeing := range u.context.GameState().GetTimeKeeper().GetBeingsByFilter(func(being common.TimedBeing) bool {
-		switch being.(type) {
-		case *common.Actor:
-			return false
-		default:
-			return false
-		}
-	}) {
-		result = append(result, timedBeing.(UIElement))
-	}
-
-	return result
-}
 func (u *UIController) SetTTFFont(file io.ReaderAt, size float64) {
 	tt, err := opentype.ParseReaderAt(file)
 	if err != nil {
@@ -1116,7 +1016,7 @@ func (u *UIController) Cancel() {
 		u.OnCommand(PlayerCommandCancel)
 		return
 	}
-	if u.inventory.IsActive() {
+	if u.inventory != nil && u.inventory.IsActive() {
 		u.inventory.Deactivate()
 		return
 	}
@@ -1175,50 +1075,52 @@ func (u *UIController) OpenClassSelectionMenu() {
 	u.OpenMenu(items)
 }
 func (u *UIController) OnPlayerTurnTaken() {
-	u.UpdateMiniMap()
-	u.UpdateStatsLabel()
+	// Called once per tick now that the world runs in real time, so nothing in
+	// here may cost a frame. Everything that is purely a function of where the
+	// player stands runs on the step, not on the tick.
 	player := u.context.GameState().GetPlayer()
+	playerPos := player.MapPosition()
+	playerMoved := playerPos != u.lastPlayerTile
+	u.lastPlayerTile = playerPos
 
-	if (!u.setToExactFit && !u.configuration.KeepPlayerCentered) || u.configuration.KeepPlayerCentered {
-		distFromBorder := 4
-		playerPos := player.MapPosition()
-		visibleMap := u.mapRenderer.GetVisibleMap()
-		visibleMap = visibleMap.Shift(distFromBorder, distFromBorder, -distFromBorder, -distFromBorder)
-		if !visibleMap.Contains(playerPos) {
-			u.mapRenderer.CenterOnFloat(player.DrawPosition())
+	if playerMoved {
+		// Fog of war and the player's own dot only change when he does.
+		u.UpdateMiniMap()
+
+		// Scrolling the map back under the player is a function of his tile and
+		// the visible rect. A resize is handled by OnScreenSizeChanged.
+		if (!u.setToExactFit && !u.configuration.KeepPlayerCentered) || u.configuration.KeepPlayerCentered {
+			distFromBorder := 4
+			visibleMap := u.mapRenderer.GetVisibleMap().Shift(distFromBorder, distFromBorder, -distFromBorder, -distFromBorder)
+			if !visibleMap.Contains(playerPos) {
+				u.mapRenderer.CenterOnFloat(player.DrawPosition())
+			}
+		}
+	}
+
+	// The clock and the Townspeople's dots move whether the player does or not,
+	// so these two still need a heartbeat — just not one per frame. Six times a
+	// second is under one animation frame of staleness.
+	// ponytail: fixed divisor. Drive it off the clock's minute if it ever shows.
+	if u.worldTicks%10 == 0 {
+		u.UpdateStatsLabel()
+		if !playerMoved {
+			u.UpdateMiniMap()
 		}
 	}
 }
 
 func (u *UIController) UpdateStatsLabel() {
 	state := u.context.GameState()
-	player := state.GetPlayer()
-	playerStats := player.GetStats()
-	var hpColor color.Color
-	hpColor = defs.DarkTextColor
-
-	if playerStats.GetResource(stats.Health).IsLessThanPercent(0.25) {
-		hpColor = color.RGBA{R: 255, G: 30, B: 30, A: 255}
-	} else if playerStats.GetResource(stats.Health).IsLessThanPercent(0.5) {
-		hpColor = color.RGBA{R: 255, G: 150, B: 30, A: 255}
-	} else if playerStats.GetResource(stats.Health).IsLessThanPercent(0.75) {
-		hpColor = color.RGBA{R: 255, G: 255, B: 30, A: 255}
-	}
-
 	label := u.statsLabel
-	mapNameParts := util.ToLabelTextWithColor(strings.Split(state.GetMap().GetDisplayName(), "\n"), defs.DarkTextColor)
 	clock := state.GetClock()
-	timeOfDay := "night"
-	if clock.IsDaylight() {
-		timeOfDay = "day"
-	}
 	bloodText := ""
 	if u.context.Blood != nil {
 		if blood := u.context.Blood(); blood != nil {
 			bloodText = blood.String()
 		}
 	}
-	statusParts := []util.LabelText{
+	label.SetText([]util.LabelText{
 		{
 			Text:      clock.String(),
 			TextColor: defs.DarkTextColor,
@@ -1228,19 +1130,13 @@ func (u *UIController) UpdateStatsLabel() {
 			TextColor: defs.DarkTextColor,
 		},
 		{
-			Text:      timeOfDay,
+			Text:      fmt.Sprintf("%.0f fps / %.0f tps", ebiten.ActualFPS(), ebiten.ActualTPS()),
 			TextColor: defs.DarkTextColor,
 		},
-		{
-			Text:      fmt.Sprintf("HP: %s", playerStats.GetResource(stats.Health).ToString()),
-			TextColor: hpColor,
-		},
-	}
-	statLines := append(mapNameParts, statusParts...)
-
-	label.SetText(statLines)
+	})
 	u.miniMap.Show()
 }
+
 func (u *UIController) showHelpText() {
 	textColor := defs.DarkTextColor
 	lines := []string{
@@ -1252,6 +1148,7 @@ func (u *UIController) showHelpText() {
 		"'e' to drain someone standing next to you.",
 		"'h' to hide a body you are standing over.",
 		"'end' to leave the town for good, whenever you choose.",
+		"'1' to '6' to look up whoever is listed under that number on the right.",
 		"'x' to centre the view on yourself.",
 		"'l' to show the last lines of the message log.",
 		"'c' to show your stats.",
@@ -1386,10 +1283,10 @@ func (u *UIController) openShopMenuWithHandler(inventory *common.Inventory, hand
 			Icon:     item.InventoryIcon(),
 			TextColumns: []util.LabelText{
 				{
-					Text:               nameString,
+					Text: nameString,
 					//TextWithColorCodes: textParser(nameStringWithColor),
-					UseColorCodes:      false,
-					TextColor: item.TintColor(),
+					UseColorCodes: false,
+					TextColor:     item.TintColor(),
 				},
 				{
 					Text:               priceString,

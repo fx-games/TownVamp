@@ -71,7 +71,10 @@ func CreateLoop(c LoopConfig, terminationCode *int) func() {
 				previous = current
 
 				if elapsed < secsPerUpdate {
-					time.Sleep(time.Second * time.Duration(secsPerUpdate - elapsed))
+					// time.Duration is an integer count of nanoseconds: converting
+					// the fractional seconds first truncated every sleep to zero
+					// and the loop spun at 100% CPU.
+					time.Sleep(time.Duration((secsPerUpdate - elapsed) * float64(time.Second)))
 				}
 			}
 

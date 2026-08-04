@@ -89,11 +89,8 @@ func (g *GameInstance) spawnHunter(near geometry.Point) {
 // The lantern it carries is what limits it. A Hunter sees only the pool its own
 // light casts, while the vampire sees the whole street — so it hunts him with
 // the one thing that keeps it from finding him.
-func (g *GameInstance) getHunterAction(actor *common.Actor) (int, func()) {
-	stepCost := 100 / actor.GetMoveSpeed()
-	if actor.GetEnergy() < stepCost {
-		return 0, nil
-	}
+func (g *GameInstance) getHunterAction(actor *common.Actor) (float64, func()) {
+	stepCost := common.SecondsPerStep(actor.GetMoveSpeed())
 	player := g.state.GetPlayer()
 	if player == nil || !player.IsAlive() || g.ending != RunOngoing {
 		return waitOneStep(stepCost)

@@ -6,14 +6,9 @@ import (
 
 type OpenDoorAction struct {
 	BaseAction
-	actor      *Actor
-	door       *Door
-	doorPos    geometry.Point
-	delayInAut int
-}
-
-func (d *OpenDoorAction) GetDelayInAut() int {
-	return d.delayInAut
+	actor   *Actor
+	door    *Door
+	doorPos geometry.Point
 }
 
 func NewOpenDoorAction(source Cause, actor *Actor, doorPosition geometry.Point) *OpenDoorAction {
@@ -22,9 +17,8 @@ func NewOpenDoorAction(source Cause, actor *Actor, doorPosition geometry.Point) 
 			cause: source,
 			name:  ActionNameOpenDoor,
 		},
-		actor:      actor,
-		doorPos:    doorPosition,
-		delayInAut: 10,
+		actor:   actor,
+		doorPos: doorPosition,
 	}
 }
 func (d *OpenDoorAction) Execute(context ActionContext) []Action {

@@ -13,13 +13,13 @@ Use the standard library testing package. No framework, no fixtures, no mocking 
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The game can be constructed in a test with the null user interface and no graphical
+- [x] The game can be constructed in a test with the null user interface and no graphical
       subsystem
-- [ ] A test advances the simulation by a given in-game duration
-- [ ] A test asserts on observable world state — an actor's position, a Townsperson's
+- [x] A test advances the simulation by a given in-game duration
+- [x] A test asserts on observable world state — an actor's position, a Townsperson's
       Presence, the vampire's Blood — without reaching into how that state was computed
-- [ ] The simulation is seeded, so a test that needs a specific outcome fixes the seed
+- [x] The simulation is seeded, so a test that needs a specific outcome fixes the seed
       rather than asserting on a distribution
-- [ ] Tests run from a clean checkout with no manual setup
+- [x] Tests run from a clean checkout with no manual setup

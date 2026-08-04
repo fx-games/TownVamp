@@ -6,17 +6,17 @@ import (
 )
 
 type MinimapOverlay struct {
-	uiController             *UIController
-	topLeft                  geometry.Point
-	offsetFromTopRightCorner geometry.Point
-	bounds                   geometry.Rect
-	isHidden                 bool
-	isMouseOver              bool
-	miniMapImage             *ebiten.Image
-	availableWidth           int
-	scaleFactor              float64
-	onMapClickedHandler      func(button ebiten.MouseButton, mapPos geometry.Point)
-	maxHeight                int
+	uiController                *UIController
+	topLeft                     geometry.Point
+	offsetFromBottomRightCorner geometry.Point
+	bounds                      geometry.Rect
+	isHidden                    bool
+	isMouseOver                 bool
+	miniMapImage                *ebiten.Image
+	availableWidth              int
+	scaleFactor                 float64
+	onMapClickedHandler         func(button ebiten.MouseButton, mapPos geometry.Point)
+	maxHeight                   int
 }
 
 func (o *MinimapOverlay) OnCommand(command CommandType) bool {
@@ -73,10 +73,10 @@ func (o *MinimapOverlay) ShouldClose() bool {
 }
 
 func (o *MinimapOverlay) Layout() {
-	o.layoutFromTopRightCorner(o.offsetFromTopRightCorner)
+	o.layoutFromBottomRightCorner(o.offsetFromBottomRightCorner)
 }
 
-func (o *MinimapOverlay) layoutFromTopRightCorner(offsetFromTopRightCorner geometry.Point) {
+func (o *MinimapOverlay) layoutFromBottomRightCorner(offsetFromBottomRightCorner geometry.Point) {
 	screenSize := o.uiController.GetScreenSize()
 	image := o.miniMapImage
 	mapSizeX := image.Bounds().Dx()
@@ -93,8 +93,8 @@ func (o *MinimapOverlay) layoutFromTopRightCorner(offsetFromTopRightCorner geome
 	}
 
 	o.topLeft = geometry.Point{
-		X: screenSize.X - offsetFromTopRightCorner.X,
-		Y: offsetFromTopRightCorner.Y,
+		X: screenSize.X - offsetFromBottomRightCorner.X,
+		Y: screenSize.Y - offsetFromBottomRightCorner.Y - mapSizeY,
 	}
 	o.bounds = geometry.NewRect(o.topLeft.X, o.topLeft.Y, o.topLeft.X+mapSizeX, o.topLeft.Y+mapSizeY)
 }
@@ -133,13 +133,13 @@ func (o *MinimapOverlay) SetMiniMapImage(image *ebiten.Image) {
 func (o *MinimapOverlay) SetOnMapClickedHandler(handler func(button ebiten.MouseButton, mapPos geometry.Point)) {
 	o.onMapClickedHandler = handler
 }
-func NewMiniMap(uiController *UIController, offsetFromTopRightCorner geometry.Point, maxHeight, availableWidth int, miniMapImage *ebiten.Image) *MinimapOverlay {
+func NewMiniMap(uiController *UIController, offsetFromBottomRightCorner geometry.Point, maxHeight, availableWidth int, miniMapImage *ebiten.Image) *MinimapOverlay {
 	i := &MinimapOverlay{
-		uiController:             uiController,
-		miniMapImage:             miniMapImage,
-		offsetFromTopRightCorner: offsetFromTopRightCorner,
-		availableWidth:           availableWidth,
-		maxHeight:                maxHeight,
+		uiController:                uiController,
+		miniMapImage:                miniMapImage,
+		offsetFromBottomRightCorner: offsetFromBottomRightCorner,
+		availableWidth:              availableWidth,
+		maxHeight:                   maxHeight,
 	}
 	i.Layout()
 	return i

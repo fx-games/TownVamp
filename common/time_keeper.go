@@ -1,88 +1,89 @@
 package common
 
-type TimedBeing interface {
-	AddEnergy(energy int)
-	RemoveEnergy(used int)
-	IsAlive() bool
-	GetBaseSpeed() int
-	GetEnergy() int
+// BaseSecondsPerStep is how long one cell costs someone of ordinary speed, and
+// so what finally decides how fast anyone crosses the town: a minute a cell,
+// about an hour end to end. Schedules are only achievable if this and the
+// distances on the map agree, so expect to tune it against the real town.
+const BaseSecondsPerStep = 60.0
+
+// SecondsPerStep is what a step costs the given walker. Speed is a multiplier
+// on the ordinary pace, where ten is ordinary.
+func SecondsPerStep(moveSpeed int) float64 {
+	if moveSpeed <= 0 {
+		return BaseSecondsPerStep
+	}
+	return BaseSecondsPerStep * 10.0 / float64(moveSpeed)
 }
 
-// SecondsPerAut fixes what an AUT is worth on the wall clock, which is what
-// finally decides how fast anyone walks. A step costs 10 AUT, so at six seconds
-// per AUT a Townsperson covers one tile per in-game minute — about a minute to
-// cross a room, an hour to cross the town. Schedules are only achievable if this
-// and the distances on the map agree, so expect to tune it against the real town.
-const SecondsPerAut = 6.0
+// TimedBeing is anyone the world moves without being asked. There is no action
+// economy behind this any more: the world runs on a clock, so a being simply
+// says when it may act again and the TimeKeeper honours it.
+type TimedBeing interface {
+	IsAlive() bool
+
+	// ReadyAt is the moment, in in-game seconds since the run began, from which
+	// this being may act again.
+	ReadyAt() float64
+	SetReadyAt(second float64)
+}
 
 type TimeKeeper struct {
-	autCounter         uint64
-	timed              []TimedBeing
-	hasEnergyForAction func(being TimedBeing) (int, func())
-	onRemoveTimed      func(thing TimedBeing)
-
-	// Time arrives in fractions of an AUT — a tick is one in-game second, an AUT
-	// is six — while energy is whole numbers. The remainder is carried here.
-	pendingAut float64
+	elapsedSeconds float64
+	timed          []TimedBeing
+	nextAction     func(being TimedBeing) (secondsUsed float64, act func())
+	onRemoveTimed  func(thing TimedBeing)
 }
 
-func NewTimeKeeper(hasEnergyForAction func(being TimedBeing) (int, func())) *TimeKeeper {
+func NewTimeKeeper(nextAction func(being TimedBeing) (secondsUsed float64, act func())) *TimeKeeper {
 	return &TimeKeeper{
-		timed:              make([]TimedBeing, 0),
-		hasEnergyForAction: hasEnergyForAction,
+		timed:      make([]TimedBeing, 0),
+		nextAction: nextAction,
 	}
 }
 
 func (t *TimeKeeper) SetTimed(timedBeings []TimedBeing) {
 	t.timed = timedBeings
+	for _, being := range timedBeings {
+		being.SetReadyAt(t.elapsedSeconds)
+	}
 }
 
 // AdvanceBySeconds moves the world forward by some number of in-game seconds.
 // This is the only clock: it runs from the fixed-timestep update, not from a
 // player action, so the town keeps moving whether or not the player does.
 func (t *TimeKeeper) AdvanceBySeconds(inGameSeconds float64) {
-	t.pendingAut += inGameSeconds / SecondsPerAut
-	wholeAut := int(t.pendingAut)
-	if wholeAut <= 0 {
-		return
-	}
-	t.pendingAut -= float64(wholeAut)
-	t.advance(wholeAut)
-}
-
-func (t *TimeKeeper) advance(autElapsed int) {
-	t.autCounter += uint64(autElapsed)
+	t.elapsedSeconds += inGameSeconds
 
 	// Iterated backwards so that a being dying mid-loop can be removed without
 	// disturbing the indices still to be visited.
 	for i := len(t.timed) - 1; i >= 0; i-- {
-		if i >= len(t.timed) {
-			continue
-		}
-		timedBeing := t.timed[i]
-		if !timedBeing.IsAlive() {
+		being := t.timed[i]
+		if !being.IsAlive() {
 			t.removeAtIndex(i)
 			continue
 		}
-		addedEnergy := int((float64(autElapsed) / 10.0) * float64(timedBeing.GetBaseSpeed()))
-		timedBeing.AddEnergy(addedEnergy)
-		for energyUsed, action := t.hasEnergyForAction(timedBeing); timedBeing.IsAlive() && action != nil; energyUsed, action = t.hasEnergyForAction(timedBeing) {
-			timedBeing.RemoveEnergy(energyUsed)
-			if !timedBeing.IsAlive() {
+		for being.ReadyAt() <= t.elapsedSeconds {
+			secondsUsed, act := t.nextAction(being)
+			if act == nil {
+				break // nothing they can do yet; ask again next slice
+			}
+			act()
+			if !being.IsAlive() {
 				t.removeAtIndex(i)
 				break
 			}
-			action()
+			if secondsUsed <= 0 {
+				break // a free action would spin here forever
+			}
+			being.SetReadyAt(being.ReadyAt() + secondsUsed)
 		}
 	}
 }
 
-// ElapsedAut is the total simulated time since the run began.
-func (t *TimeKeeper) ElapsedAut() uint64 {
-	return t.autCounter
-}
-
 func (t *TimeKeeper) AddTimed(actor TimedBeing) {
+	// From now, not from the beginning of the run, or a being added to a world
+	// already hours old would owe the loop every step it missed.
+	actor.SetReadyAt(t.elapsedSeconds)
 	t.timed = append(t.timed, actor)
 }
 

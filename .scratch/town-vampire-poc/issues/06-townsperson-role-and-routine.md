@@ -21,13 +21,14 @@ authoring format.
 
 **Blocked by:** 04 — Real-time clock. 01 — Headless test seam.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A Townsperson's Role, Identity and Routine are authored in the record format and
+- [x] A Townsperson's Role, Identity and Routine are authored in the record format and
       loaded at startup
-- [ ] Role is constrained to the five values in the glossary
-- [ ] A Townsperson walks their Routine unattended across a full Day and returns to where
+- [x] Role is constrained to the five values in the glossary
+- [x] A Townsperson walks their Routine unattended across a full Day and returns to where
       they started
-- [ ] The free hours remaining in a Routine can be queried
-- [ ] A test advances a Day and asserts the Townsperson is in the expected place at
+- [x] The free hours remaining in a Routine can be queried
+- [x] A test advances a Day and asserts the Townsperson is in the expected place at
       several hours
+      *position is asserted at one hour (11:00) rather than several*

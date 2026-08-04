@@ -2,6 +2,8 @@ package game
 
 import (
 	"rpg/common"
+	"rpg/geometry"
+	"rpg/stats"
 	"strings"
 	"testing"
 )
@@ -262,4 +264,83 @@ func TestLeavingTownEndsTheRun(t *testing.T) {
 	if game.Ending() != RunLeftTown {
 		t.Errorf("expected to have left town, got %q", game.Ending())
 	}
+}
+
+// The vampire has no stat block. Blood is his health, and health is not.
+func TestTheVampireLivesOnBloodNotHealth(t *testing.T) {
+	game := newTestGame(t)
+	player := game.GetWorldState().GetPlayer()
+
+	player.GetStats().GetResource(stats.Health).SetToMin()
+	if !player.IsAlive() {
+		t.Error("emptying the health resource killed the vampire; his life is his Blood")
+	}
+
+	game.Blood().Drain(float64(common.SecondsPerDay) * 100) // burn the lot
+	if player.IsAlive() {
+		t.Error("with no Blood left the vampire is still alive")
+	}
+}
+
+// Dawn in the open is a scramble for shelter, not a full stop: the sun burns
+// Blood away fast, but there is time to run.
+func TestSunlightBurnsFastInsteadOfKillingOutright(t *testing.T) {
+	game := newTestGame(t)
+	clock := game.GetWorldState().GetClock()
+
+	// Sheltered in the lair until the sun is up.
+	for i := 0; i < 24*60*oneRealSecond && !clock.IsDaylight(); i++ {
+		game.Advance(1.0)
+	}
+	if !clock.IsDaylight() {
+		t.Fatal("the sun never came up")
+	}
+	stepIntoTheOpen(t, game)
+
+	blood := game.Blood()
+	before := blood.Current()
+	advanceRealSeconds(game, 5) // five in-game minutes of sun
+
+	burned := before - blood.Current()
+	if game.Ending() != RunOngoing {
+		t.Fatalf("five minutes of sun ended the run as %q; it should only hurt", game.Ending())
+	}
+	nightlyDrain := blood.DrainPerDay * (5.0 / (24 * 60))
+	if burned <= nightlyDrain*10 {
+		t.Errorf("sunlight burned %.2f Blood in five minutes, barely more than the %.2f it costs at night", burned, nightlyDrain)
+	}
+
+	// Stay out in it and it does finish him.
+	for i := 0; i < 2*60*60*oneRealSecond && game.Ending() == RunOngoing; i++ {
+		game.Advance(1.0)
+	}
+	if game.Ending() != RunBurned {
+		t.Errorf("standing in the sun ended the run as %q, expected %q", game.Ending(), RunBurned)
+	}
+}
+
+// stepIntoTheOpen puts the player somewhere the lair does not shelter them.
+func stepIntoTheOpen(t *testing.T, game *GameInstance) {
+	t.Helper()
+	currentMap := game.GetWorldState().GetMap()
+	lair, ok := game.lairPosition()
+	if !ok {
+		t.Fatal("the town has no lair")
+	}
+	size := currentMap.MapSize()
+	for y := 0; y < size.Y; y++ {
+		for x := 0; x < size.X; x++ {
+			here := geometry.Point{X: x, Y: y}
+			if !currentMap.IsWalkable(here) || currentMap.IsActorAt(here) {
+				continue
+			}
+			if currentMap.MoveDistance(here, lair) <= LairRadius {
+				continue
+			}
+			currentMap.MoveActor(game.GetWorldState().GetPlayer(), here)
+			game.GetWorldState().GetPlayer().SetDrawPosition(here.ToPointF())
+			return
+		}
+	}
+	t.Fatal("nowhere in the town is out of the lair's shelter")
 }

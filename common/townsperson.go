@@ -99,6 +99,10 @@ type Townsperson struct {
 	Identity     string
 	Routine      Routine
 
+	// Number is what the player knows this person by. Assigned once at load from
+	// the fixed order of the cast, so it never changes during a game.
+	Number int
+
 	// Obligations are what this Townsperson currently owes. They change hands
 	// when someone goes Absent, which is why the Schedule is derived from them
 	// rather than authored alongside the Routine.

@@ -172,34 +172,19 @@ func (c *Console) ShowFullStats() {
 }
 
 func (c *Console) UpdateStatsLabel() {
-	player := c.context.GameState().GetPlayer()
-	pStats := player.GetStats()
-
-	level := pStats.GetAttribute(stats.Level)
-	levelStr := fmt.Sprintf("Level: %-2d", level)
-
-	gold := pStats.GetAttribute(stats.Gold)
-	goldStr := fmt.Sprintf("Gold: %-5d", gold)
-
-	hp := pStats.GetResource(stats.Health).Value()
-	hpMax := pStats.GetResource(stats.Health).GetMax()
-	hpValString := fmt.Sprintf("%d(%d)", hp, hpMax)
-	hpStr := fmt.Sprintf("HP: %-7s", hpValString)
-
-	str := pStats.GetAttribute(stats.Strength)
-	strMax := pStats.GetAttribute(stats.Strength)
-	strValString := fmt.Sprintf("%d(%d)", str, strMax)
-	strStr := fmt.Sprintf("Str: %-7s", strValString)
-
-	armor := player.GetArmorClass()
-	armorStr := fmt.Sprintf("Armor: %-3d", armor)
-
-	xp := pStats.GetAttribute(stats.Experience)
-	xpStr := fmt.Sprintf("XP: %d", xp)
-
-	statusStr := fmt.Sprintf("%s %s %s %s %s %s", levelStr, goldStr, hpStr, strStr, armorStr, xpStr)
-
-	c.statusBar.SetText(statusStr)
+	state := c.context.GameState()
+	clock := state.GetClock()
+	timeOfDay := "night"
+	if clock.IsDaylight() {
+		timeOfDay = "day"
+	}
+	bloodStr := ""
+	if c.context.Blood != nil {
+		if blood := c.context.Blood(); blood != nil {
+			bloodStr = blood.String()
+		}
+	}
+	c.statusBar.SetText(fmt.Sprintf("%s  %s  %s", clock.String(), bloodStr, timeOfDay))
 }
 func (c *Console) OpenStash(inv *common.Inventory, town *common.Inventory, drop func(item *common.Item)) {
 

@@ -20,11 +20,13 @@ defect to chase. Movement animation durations scale with it.
 
 **Blocked by:** 04 — Real-time clock.
 
-**Status:** ready-for-agent
+**Status:** mostly-done
 
-- [ ] The player can pause and resume at any moment
+- [x] The player can pause and resume at any moment
 - [ ] The player can wait until dawn, until dusk, or until a named Townsperson moves
+      *`common.WaitCondition` has only `WaitUntilDawn` and `WaitUntilDusk`. Waiting on a named Townsperson — the spying verb — is missing*
 - [ ] A wait is interrupted when something notable happens
-- [ ] The Time Multiplier is read from configuration and supports at least x1, x2 and x4
-- [ ] A test asserts the simulation reaches identical state at every multiplier for the
+      *`WaitUntil` breaks only on the player dying, plus a two-Day cap*
+- [x] The Time Multiplier is read from configuration and supports at least x1, x2 and x4
+- [x] A test asserts the simulation reaches identical state at every multiplier for the
       same number of in-game hours

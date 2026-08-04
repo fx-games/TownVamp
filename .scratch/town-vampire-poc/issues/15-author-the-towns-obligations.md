@@ -31,18 +31,21 @@ journal or hint system to fall back on if behaviour does not read.
 **Blocked by:** 08 — Obligations and derived Schedule. 09 — Private Actions and seeking
 privacy. 10 — Zones, trespass and Withdrawal. 12 — Absence timer and Reassignment.
 
-**Status:** ready-for-agent
+**Status:** mostly-done
 
-- [ ] Each of the six Townspeople has one to three Obligations authored in the record
+- [x] Each of the six Townspeople has one to three Obligations authored in the record
       format
-- [ ] Every Obligation has both a performed appearance and an absent appearance
-- [ ] Some Obligations point at a specific Townsperson and some at the town
-- [ ] At least one Obligation can be reassigned to the person it pointed at, and at least
+- [x] Every Obligation has both a performed appearance and an absent appearance
+- [x] Some Obligations point at a specific Townsperson and some at the town
+- [x] At least one Obligation can be reassigned to the person it pointed at, and at least
       one only to a matching Role
-- [ ] At least one Obligation cannot be absorbed by anyone once its holder is gone
-- [ ] At least one Private Action is shared between two Townspeople
-- [ ] Routine density varies enough that one Townsperson is clearly the town's shock
+- [x] At least one Obligation cannot be absorbed by anyone once its holder is gone
+      *every Private Action names no Role, so each dies with its holder*
+- [x] At least one Private Action is shared between two Townspeople
+      *`the_grave_visit`, which Aldren may witness*
+- [x] Routine density varies enough that one Townsperson is clearly the town's shock
       absorber
-- [ ] Private Zones are authored across the map so trespass is possible and meaningful
+- [x] Private Zones are authored across the map so trespass is possible and meaningful
 - [ ] A full run has been played end to end and the consequences of a killing were legible
       without recourse to code or logs
+      *a human playtest; nothing in the repo can confirm it*

@@ -78,6 +78,7 @@ Unique Monsters
 const (
 	IconNone                     int32 = -1
 	IconWhite                    int32 = 18
+	IconVampire                  int32 = 672 // row 24, column 0: the hooded figure
 	IconTargeting                int32 = 220
 	IconGrass                    int32 = 0
 	IconDirt                     int32 = 1

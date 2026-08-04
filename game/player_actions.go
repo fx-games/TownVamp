@@ -7,7 +7,6 @@ import (
 	"rpg/defs"
 	"rpg/geometry"
 	"rpg/gridmap"
-	"rpg/stats"
 	"rpg/util"
 )
 
@@ -21,17 +20,14 @@ type Actions struct {
 	audio        *audio.Player
 	definitions  defs.DataContainer
 
-	getTimeKeeper  func() *common.TimeKeeper
 	logError       func(message string)
 	autoExplore    bool
 	playerPath     []geometry.Point
+	walkDirection  geometry.PointF
+	lastBumpedTile geometry.Point
 	isResting      bool
 	actorSpeak     func(actor *common.Actor, trigger defs.ActorSpeechTrigger)
 	queueAfterTurn func(call func())
-}
-
-func (a *Actions) EndTurn(autTaken int) {
-	a.actionBroker.Execute(common.NewEndPlayerTurnAction(common.AbstractCause("Wait"), autTaken))
 }
 
 func (a *Actions) DropItem(item *common.Item) {
@@ -48,9 +44,7 @@ func (a *Actions) PickUpItem() {
 	if !state.GetMap().IsItemAt(player.MapPosition()) {
 		return
 	}
-	pickUpAction := common.NewPickUpAction(common.AbstractCause("PickUpAction"), player)
-	a.actionBroker.Execute(pickUpAction)
-	a.actionBroker.Execute(common.NewEndPlayerTurnAction(pickUpAction.Cause(), pickUpAction.GetDelayInAut()))
+	a.actionBroker.Execute(common.NewPickUpAction(common.AbstractCause("PickUpAction"), player))
 }
 
 type PlayerActionsContext struct {
@@ -59,7 +53,6 @@ type PlayerActionsContext struct {
 	State          *common.State
 	UI             func() common.UserInterface
 	Speak          func(actor *common.Actor, trigger defs.ActorSpeechTrigger)
-	GetTimeKeeper  func() *common.TimeKeeper
 	Msg            func(message string)
 	Animator       common.Animator
 	Configuration  common.Configuration
@@ -74,10 +67,10 @@ func NewActions(context PlayerActionsContext) *Actions {
 		ui:             context.UI,
 		actorSpeak:     context.Speak,
 		animator:       context.Animator,
-		getTimeKeeper:  context.GetTimeKeeper,
 		logError:       context.Msg,
 		config:         context.Configuration,
 		queueAfterTurn: context.QueueAfterTurn,
+		lastBumpedTile: geometry.Point{X: noBumpTileX, Y: noBumpTileX},
 	}
 }
 func (a *Actions) EquipItem(item *common.Item) {
@@ -103,18 +96,12 @@ func (a *Actions) ManualMovePlayer(direction geometry.Point) {
 	}
 	a.CancelAutoMove()
 
-	stepCost := 100 / player.GetMoveSpeed()
-	if player.GetEnergy() < stepCost {
-		return // not enough time has passed for another step
-	}
-
 	playerAction := common.PlayerMoveStep(player, direction, a.getActionContext())
 	if playerAction == nil {
 		return
 	}
 
 	a.actionBroker.Execute(playerAction)
-	a.actionBroker.Execute(common.NewEndPlayerTurnAction(playerAction.Cause(), playerAction.GetDelayInAut()))
 }
 
 func (a *Actions) getActionContext() common.ActionContext {
@@ -159,9 +146,7 @@ func (a *Actions) nextStepOnPlayerPath() {
 
 		if state.GetMap().IsObjectAt(nextStep) {
 			if a.state.IsClosedDoorAt(nextStep) {
-				openDoorAction := common.NewOpenDoorAction(common.AbstractCause("Player Movement"), state.GetPlayer(), nextStep)
-				a.actionBroker.QueueForExecution(openDoorAction)
-				a.actionBroker.QueueForExecution(common.NewEndPlayerTurnAction(openDoorAction.Cause(), openDoorAction.GetDelayInAut()))
+				a.actionBroker.QueueForExecution(common.NewOpenDoorAction(common.AbstractCause("Player Movement"), state.GetPlayer(), nextStep))
 				return
 			} else if !a.autoExplore {
 				objectAt := state.GetMap().ObjectAt(nextStep)
@@ -184,7 +169,6 @@ func (a *Actions) nextStepOnPlayerPath() {
 		autoMoveAction := common.NewMoveAction(common.AbstractCause("Player Movement"), state.GetPlayer(), nextStep, true)
 		autoMoveAction.SetAnimationDelay(0.08)
 		a.actionBroker.QueueForExecution(autoMoveAction)
-		a.actionBroker.QueueForExecution(common.NewEndPlayerTurnAction(autoMoveAction.Cause(), autoMoveAction.GetDelayInAut()))
 	} else if a.autoExplore {
 		if target, hasTarget := a.getNextAutoExploreTarget(); hasTarget {
 			a.continuePlayerAutoMovement(target)
@@ -255,9 +239,7 @@ func (a *Actions) StartPlayerAutoMovement(targetPos geometry.Point) {
 		if currentMap.IsItemAt(playerPosition) {
 			itemAt := currentMap.ItemAt(playerPosition)
 			if !itemAt.IsDroppedByPlayer() {
-				pickUpAction := common.NewPickUpAction(common.AbstractCause("PickUp"), player)
-				a.actionBroker.Execute(pickUpAction)
-				a.actionBroker.Execute(common.NewEndPlayerTurnAction(pickUpAction.Cause(), pickUpAction.GetDelayInAut()))
+				a.actionBroker.Execute(common.NewPickUpAction(common.AbstractCause("PickUp"), player))
 			}
 		}
 	}
@@ -389,53 +371,7 @@ func (a *Actions) goOneLevelDown() {
 }
 
 func (a *Actions) playerMoveOneStep(player *common.Actor, targetPos geometry.Point) {
-	moveAction := common.NewMoveAction(common.NewActorCause("Move", player), player, targetPos, true)
-	a.actionBroker.Execute(moveAction)
-	a.actionBroker.Execute(common.NewEndPlayerTurnAction(moveAction.Cause(), moveAction.GetDelayInAut()))
-}
-func (a *Actions) RestUntilHealed() {
-	state := a.state
-	if len(state.GetVisibility().GetVisibleEnemies()) > 0 {
-		a.logError("You can't rest with enemies nearby")
-		return
-	}
-	/*
-		hpRegenRate := state.GetPlayer().GetStats().GetAttributeAsFloat(stats.HealthRegeneration)
-		if hpRegenRate <= 0 {
-			a.isResting = false
-			a.logError("You won't heal through resting")
-			return
-		}
-	*/
-	healthResource := state.GetPlayer().GetStats().GetResource(stats.Health)
-	if healthResource.IsAtMax() {
-		a.isResting = false
-		if a.isResting {
-			a.logError("Your spirits have been restored")
-		} else {
-			a.logError("You are already at full health")
-		}
-		return
-	}
-
-	playerInventory := state.GetPlayer().GetInventory()
-	if !playerInventory.HasFood() {
-		a.isResting = false
-		a.logError("You have no food to eat")
-		return
-	}
-
-	playerInventory.UseFood()
-
-	a.isResting = true
-	userInterface := a.ui()
-	userInterface.FadeToBlack()
-	a.queueAfterTurn(func() {
-		a.isResting = false
-		userInterface.FadeFromBlack()
-		a.actionBroker.QueueForExecution(common.NewChangeResourceAction(common.AbstractCause("Resting"), state.GetPlayer(), stats.Health, float64(healthResource.GetMax())))
-	})
-	a.actionBroker.QueueForExecution(common.NewEndPlayerTurnAction(common.AbstractCause("Resting"), 10))
+	a.actionBroker.Execute(common.NewMoveAction(common.NewActorCause("Move", player), player, targetPos, true))
 }
 func (a *Actions) SetQueueAfterTurn(afterTurn func(call func())) {
 	a.queueAfterTurn = afterTurn
