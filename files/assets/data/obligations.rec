@@ -16,11 +16,20 @@
 #   performed  what a watcher sees when it happens
 #   absent     what the town looks like when it does not
 #
-# This is the dependency graph in docs/specs/town-design-handover.md: the farmer
-# feeds the inn and the mill, the miller feeds the inn, the smith keeps both
-# their tools working, the carpenter keeps the mill and the inn standing, and
-# the priest touches everyone. Elias and Martin are both Role farmer, so their
-# deliveries can move between them — the smith's and the carpenter's cannot.
+# This is the town's economy, and it is the whole of it. Food is produced by
+# four people — Elias grows it, Jorin keeps the animals, Bram works the river,
+# Martin grinds what Elias brings him — and leaves them along two routes: to
+# Greta, who cooks it, and to Hilde, who sells it. Those two then push it back
+# out to everyone who cannot stop working to come and get it. Otto keeps the
+# metal of all of it working and Marta keeps the buildings up, so both of them
+# touch every other trade without producing anything themselves. Aldren
+# produces nothing and is owed nothing, and touches everyone.
+#
+# Four of the nine are Role farmer, so a delivery that dies with one of them can
+# land on any of the other three — provided one of them still has the hours. The
+# smith's duties and the carpenter's can go to nobody at all: each is the only
+# one of their Role in town, which is why losing either is permanent in a way
+# that losing a farmer is not.
 
 id: vegetables_to_the_inn
 owner: elias
@@ -36,7 +45,7 @@ owner: elias
 towards: martin
 role: farmer
 at: mill
-window: 16:00-18:00
+window: 16:00-17:00
 performed: hauls a grain sack the length of the road and drops it by the chute
 absent: The chute stands empty and the millstones are not turned at all
 
@@ -108,6 +117,102 @@ at: vegetable_field
 window: 11:00-13:00
 performed: walks the crop rows with a hand raised over them
 absent: The rows go unblessed, and the farmer works them like a man who expects nothing
+
+# The morning goods. Three producers walk into town between six and noon — the
+# herd, the river and the fields — and each of them splits what they carry
+# between the inn, which feeds people, and the stall, which sells to them. Two
+# destinations for every producer is what makes the damage legible: kill a
+# producer and both the kitchen and the counter go short, and the player can see
+# which one he took by what stops arriving where.
+
+id: milk_to_the_inn
+owner: jorin
+towards: greta
+role: farmer
+at: inn
+window: 06:00-07:00
+performed: sets two covered pails inside the inn door while the kitchen is still dark
+absent: No milk reaches the inn, and what is served at noon is water and salt
+
+id: eggs_to_the_market
+owner: jorin
+towards: hilde
+role: farmer
+at: market_stall
+window: 08:00-09:00
+performed: unpacks eggs onto the stall one at a time, turning each one over first
+absent: The egg baskets on the stall stay stacked and empty all morning
+
+id: fish_to_the_inn
+owner: bram
+towards: greta
+role: farmer
+at: inn
+window: 10:00-11:00
+performed: carries the morning's catch up from the river and hands it over at the kitchen door
+absent: Nothing comes up from the river, and the inn serves the same pot it served yesterday
+
+id: fish_to_the_market
+owner: bram
+towards: hilde
+role: farmer
+at: market_stall
+window: 11:00-12:00
+performed: lays what the inn did not take out on the stall and stands back from the smell
+absent: The slab at the end of the stall stays dry, and people stop walking past it
+
+id: vegetables_to_the_market
+owner: elias
+towards: hilde
+role: farmer
+at: market_stall
+window: 10:00-11:00
+performed: wheels a barrow up from the field and tips greens onto the stall unsorted
+absent: There are no greens on the stall, and the people who cannot farm go without them
+
+# What the market sends back out. Hilde's counter is only half the trade: the
+# people who cannot leave their work — the smith at his fire, the priest with
+# the poor to feed — are reached by her walking to them.
+
+id: the_rounds
+owner: hilde
+towards: otto
+role: trader
+at: blacksmith
+window: 17:00-18:00
+performed: comes to the forge door with a basket and leaves with it lighter
+absent: Nobody brings the smith anything, and he works through the evening on nothing
+
+id: the_tithe_basket
+owner: hilde
+towards: aldren
+role: trader
+at: church
+window: 18:00-19:00
+performed: carries what did not sell down to the church and sets it inside the door
+absent: There is nothing at the church door to hand out, and the priest stops looking for it
+
+# The craft side of the new trade. The smith keeps the river working and the
+# carpenter keeps the stall standing — the same pattern as the mill and the inn,
+# extended to the two trades the town has just gained.
+
+id: mend_the_hooks
+owner: otto
+towards: bram
+role: smith
+at: blacksmith
+window: 18:00-19:00
+performed: straightens a handful of hooks one after another while the fisherman waits
+absent: The hooks stay bent, and less comes out of the river every week
+
+id: repair_the_market_stall
+owner: marta
+towards: hilde
+role: builder
+at: market_stall
+window: 12:00-13:00
+performed: puts a shoulder under the stall's awning and nails the brace back on
+absent: The stall leans further each day, and in the end she sells off the ground
 
 # Private Actions. These are only carried out when nobody outside the whitelist
 # can see. A group secret is a whitelist with more than one name on it — watching

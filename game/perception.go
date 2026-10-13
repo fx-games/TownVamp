@@ -44,13 +44,29 @@ func (g *GameInstance) canSee(observer *common.Actor, target geometry.Point) boo
 	return blocked[len(blocked)-1] == target
 }
 
+// canSeePlayer is canSee aimed at the vampire. Every check that asks whether
+// he has been noticed goes through it, so the Daywalker debug toggle has one
+// place to make him unseeable.
+func (g *GameInstance) canSeePlayer(observer *common.Actor) bool {
+	if g.daywalker {
+		return false
+	}
+	return g.canSee(observer, g.state.GetPlayer().MapPosition())
+}
+
+// isUnseenPlayer is true for the vampire while Daywalker is on. He still sees,
+// but nobody knows he is looking, so he does not count as a watcher.
+func (g *GameInstance) isUnseenPlayer(actor *common.Actor) bool {
+	return g.daywalker && actor == g.state.GetPlayer()
+}
+
 // whoCanSee returns the Townspeople — and the player, when relevant — able to
 // observe a place right now. Callers pass the actor doing the thing so they are
 // not counted as their own witness.
 func (g *GameInstance) whoCanSee(place geometry.Point, except *common.Actor) []*common.Actor {
 	var watchers []*common.Actor
 	for _, actor := range g.state.GetMap().Actors() {
-		if actor == except {
+		if actor == except || g.isUnseenPlayer(actor) {
 			continue
 		}
 		if g.canSee(actor, place) {

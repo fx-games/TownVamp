@@ -45,8 +45,19 @@ func (g *GameInstance) populateTown() {
 		}
 	}
 
-	for name, person := range people {
-		if actor, found := existing[name]; found {
+	g.townspeople = nil
+	for _, person := range people {
+		g.townspeople = append(g.townspeople, person)
+	}
+	sort.Slice(g.townspeople, func(i, j int) bool {
+		return g.townspeople[i].InternalName < g.townspeople[j].InternalName
+	})
+
+	// In name order, not map order: a Townsperson the map does not place is
+	// spawned next to whoever is already standing there, so iterating the file's
+	// map would put people on different tiles from one run to the next.
+	for _, person := range g.townspeople {
+		if actor, found := existing[person.InternalName]; found {
 			actor.SetTownsperson(person)
 			// Their old life as a shopkeeper is over.
 			actor.SetVendorType(common.VendorTypeNone)
@@ -55,13 +66,6 @@ func (g *GameInstance) populateTown() {
 		g.spawnTownsperson(person)
 	}
 
-	g.townspeople = nil
-	for _, person := range people {
-		g.townspeople = append(g.townspeople, person)
-	}
-	sort.Slice(g.townspeople, func(i, j int) bool {
-		return g.townspeople[i].InternalName < g.townspeople[j].InternalName
-	})
 	for i, person := range g.townspeople {
 		person.Number = i + 1
 	}
@@ -112,8 +116,13 @@ func (g *GameInstance) checkSchedulesAreWalkable() {
 func (g *GameInstance) spawnTownsperson(person *common.Townsperson) {
 	currentMap := g.state.GetMap()
 
+	// Wherever their day already has them. Starting someone at the first slot on
+	// the clock instead would open the run with half the town stood in the dark
+	// at the place they will not be for another nine hours.
 	spawnAt := geometry.Point{}
-	if len(person.Routine) > 0 {
+	if entry, found := person.Schedule().EntryAt(g.state.GetClock().SecondsSinceMidnight()); found {
+		spawnAt = entry.At
+	} else if len(person.Routine) > 0 {
 		spawnAt = person.Routine[0].At
 	}
 	if !currentMap.Contains(spawnAt) || !currentMap.IsWalkable(spawnAt) {
@@ -129,8 +138,12 @@ func (g *GameInstance) spawnTownsperson(person *common.Townsperson) {
 		spawnAt = free[0]
 	}
 
-	icon := int32('@')
+	icon := person.Icon
+	if icon == 0 {
+		icon = int32('@')
+	}
 	actor := common.NewActor(icon)
+	actor.SetUnicodeIcon(icon)
 	actor.SetInternalName(person.InternalName)
 	actor.SetName(displayName(person.InternalName))
 	actor.SetAsciiIcon(rune(displayName(person.InternalName)[0]))

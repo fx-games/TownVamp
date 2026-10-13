@@ -41,6 +41,7 @@ type Animator interface {
 }
 type DebugActions struct {
 	KillLevel func()
+	Menu      func() []util.MenuItem
 }
 
 type UserInterface interface {

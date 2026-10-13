@@ -2,15 +2,19 @@
 """Paint the PoC town described in docs/specs/town-design-handover.md into the
 Tiles layer of files/assets/maps.ldtk.
 
-Only the Tiles layer and the level size are touched; entities (Locations, NPCs,
-Doors) live on the Meta/Entities layers and are authored through the LDtk MCP.
-Re-running is safe: the tile layer is rebuilt from scratch every time.
+The Tiles layer, the level size and the Meta layer's Location entities are
+written from here: terrain and the names the data files address it by are one
+decision, so they live in one file. NPCs, Doors and Signs on the Entities layer
+are not touched — people are authored in files/assets/data/townspeople.rec.
+Re-running is safe: the tile layer and the places are rebuilt from scratch every
+time.
 
 Tile id = row * 28 + col in files/assets/classic_roguelike.png. Names for the
 ids used here are Go constants in defs/definedIcons.go.
 """
 import json
 import os
+import uuid
 
 LDTK = os.path.join(os.path.dirname(__file__), "..", "files", "assets", "maps.ldtk")
 CELL = 8
@@ -138,6 +142,16 @@ vline(36, 4, 33, DIRT)
 rect(32, 16, 10, 9, DIRT)  # town square
 put(34, 18, SHRINE)
 
+# The market stall, on the north side of the road where it crosses the square.
+# The counter blocks, so the trader stands behind it and everyone else deals
+# with her across it from the road — which is why the stall is a place people
+# are seen at rather than a building they disappear into.
+hline(33, 19, 3, COUNTER)
+put(32, 19, CRATE)
+put(36, 19, BASKET)
+put(33, 18, SACK)
+put(35, 18, BARREL)
+
 # river down the east side, bridge where the main road crosses it
 rect(64, 1, 4, H - 2, WATER)
 hline(62, 20, 8, PLANKS)
@@ -192,6 +206,16 @@ scatter([(10, 14), (11, 14)], HAY)
 scatter([(13, 14), (14, 14)], SACK)
 put(15, 15, CRATE)
 put(14, 17, WHEELBARROW)
+
+put(10, 18, BED_B)     # the farmhand sleeps in the barn with the animals
+
+# The pasture below the grain field. Fenced on the south and east only — the
+# herd is kept off the graves and off the road, and the herdsman walks his
+# animals in from the north without a gate to open.
+hline(9, 37, 10, FENCE_H)
+vline(18, 33, 5, FENCE_V)
+scatter([(10, 34), (15, 36), (11, 36)], HAY)
+put(14, 34, BUCKET)
 
 scatter([(17, 15), (17, 3), (18, 14), (16, 34), (29, 14), (30, 4)], PINE)  # (17,16) is the lunch spot
 scatter([(18, 22), (29, 34)], BARE_TREE)
@@ -257,6 +281,29 @@ put(51, 28, SHELF_B)
 put(50, 31, TOY)
 vline(48, 21, 5, DIRT)
 
+# --- the trader's house ----------------------------------------------------
+# Hard against the square, with its door on the main road: the one house in
+# town whose business is other people's goods wants to be where they pass.
+building(42, 14, 6, 6)
+put(44, 19, DOORWAY)
+put(43, 15, BED_A)          # trader bedroom
+put(46, 15, SHELF_A)
+put(46, 16, SHELF_B)
+put(45, 17, TABLE)
+put(43, 18, CRATE)
+put(46, 18, BASKET)
+
+# --- the fisherman's cottage -----------------------------------------------
+# Downstream of the mill, with its door opening straight onto the dock.
+building(56, 28, 6, 6)
+put(61, 30, DOORWAY)
+put(57, 29, BED_C)          # fisher bedroom
+put(58, 29, TABLE)
+put(57, 32, BARREL)         # salted fish
+put(60, 32, CRATE)
+put(59, 31, BASKET)
+scatter([(62, 32), (61, 27)], CRATE)
+
 # --- church and cemetery ---------------------------------------------------
 rect(26, 25, 18, 13, RED_GRASS)
 building(30, 27, 10, 10)
@@ -308,6 +355,32 @@ put(63, 12, WHEEL_BR)
 scatter([(53, 4), (53, 24), (56, 34), (44, 3), (60, 27)], PINE)
 scatter([(59, 22), (52, 36)], SHRUB)
 
+# --- named places ----------------------------------------------------------
+# Every place the data files can address by name. Routines in townspeople.rec
+# and `at:` in obligations.rec take one of these names, and `spawn` is both the
+# player's start and the vampire's lair. This dict is the only source: the
+# Location entities on the Meta layer are written from it below, and the
+# reachability check at the bottom walks to every one of them.
+WAYPOINTS = {
+    "spawn": (5, 37),
+    "vegetable_field": (8, 8), "grain_field": (8, 27), "farmhouse": (24, 8),
+    "farmer_bedroom": (22, 7), "barn": (12, 16), "hayloft": (11, 18),
+    "pasture": (13, 35), "lunch_tree": (17, 16),
+    "inn": (37, 9), "innkeeper_bedroom": (32, 7), "inn_cellar": (33, 11),
+    "blacksmith": (46, 10), "smith_storage": (50, 7),
+    "blacksmith_bedroom": (50, 11),
+    "mill": (58, 11), "mill_interior": (58, 13), "miller_bedroom": (56, 14),
+    "carpenter_workshop": (47, 29), "carpenter_interior": (49, 30),
+    "carpenter_bedroom": (46, 32),
+    "church": (36, 31), "priest_study": (32, 33), "priest_bedroom": (32, 35),
+    "cemetery": (22, 31), "childs_grave": (24, 34),
+    "town_square": (34, 21), "main_road": (20, 20), "market_stall": (34, 20),
+    "trader_house": (44, 17), "trader_bedroom": (43, 15),
+    "fisher_cottage": (58, 31), "fisher_bedroom": (57, 29),
+    "fishing_spot": (63, 30),
+    "bridge": (66, 20), "river": (62, 25), "quiet_riverbank": (69, 30),
+}
+
 # --- write -----------------------------------------------------------------
 with open(LDTK) as handle:
     project = json.load(handle)
@@ -336,10 +409,49 @@ for layer in level["layerInstances"]:
             })
     layer["gridTiles"] = tiles
 
+# Location entities are rewritten from WAYPOINTS. A place that is already on the
+# Meta layer keeps its iid so the LDtk editor and its backups stay pointed at the
+# same entity; a new one gets a fresh uuid. Anything else on the Meta layer is
+# left alone.
+meta = next(l for l in level["layerInstances"] if l["__identifier"] == "Meta")
+existing = {}
+for entity in meta["entityInstances"]:
+    if entity["__identifier"] != "Location":
+        continue
+    for field in entity["fieldInstances"]:
+        if field["__identifier"] == "Name":
+            existing[field["__value"]] = entity["iid"]
+
+others = [e for e in meta["entityInstances"] if e["__identifier"] != "Location"]
+locations = []
+for name, (x, y) in sorted(WAYPOINTS.items()):
+    locations.append({
+        "__identifier": "Location",
+        "__grid": [x, y],
+        "__pivot": [0.0, 0.0],
+        "__tags": ["META"],
+        "__tile": None,
+        "__smartColor": "#63C74D",
+        "iid": existing.get(name, str(uuid.uuid4())),
+        "width": CELL,
+        "height": CELL,
+        "defUid": 46,
+        "px": [x * CELL, y * CELL],
+        "fieldInstances": [{
+            "__identifier": "Name",
+            "__type": "String",
+            "__value": name,
+            "__tile": None,
+            "defUid": 47,
+            "realEditorValues": [{"id": "V_String", "params": [name]}],
+        }],
+    })
+meta["entityInstances"] = others + locations
+
 with open(LDTK, "w") as handle:
     json.dump(project, handle, indent=1)
 
-print(f"painted {W}x{H} tiles into {os.path.normpath(LDTK)}")
+print(f"painted {W}x{H} tiles and {len(locations)} places into {os.path.normpath(LDTK)}")
 
 # --- check: every place a Routine names can be walked to from the lair -------
 blocking = set()
@@ -355,17 +467,6 @@ while frontier:
     reached.add((x, y))
     frontier += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
 
-WAYPOINTS = {
-    "vegetable_field": (8, 8), "grain_field": (8, 27), "farmhouse": (24, 8),
-    "farmer_bedroom": (22, 7), "barn": (12, 16), "inn": (37, 9),
-    "innkeeper_bedroom": (32, 7), "inn_cellar": (33, 11), "blacksmith": (46, 10),
-    "smith_storage": (50, 7), "blacksmith_bedroom": (50, 11), "mill": (58, 11),
-    "miller_bedroom": (56, 14), "carpenter_workshop": (47, 29),
-    "carpenter_bedroom": (46, 32), "church": (36, 31), "priest_study": (32, 33),
-    "priest_bedroom": (32, 35), "cemetery": (22, 31), "childs_grave": (24, 34),
-    "town_square": (34, 21), "main_road": (20, 20), "bridge": (66, 20),
-    "river": (62, 25), "quiet_riverbank": (69, 30),
-}
 unreachable = sorted(name for name, at in WAYPOINTS.items() if at not in reached)
 assert not unreachable, f"unreachable from the lair: {unreachable}"
 print(f"all {len(WAYPOINTS)} waypoints reachable")

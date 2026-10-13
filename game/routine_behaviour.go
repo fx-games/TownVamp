@@ -29,8 +29,9 @@ func (g *GameInstance) getScheduledAction(actor *common.Actor) (float64, func())
 		slot = g.relocatedIfHiding(actor, slot)
 	}
 	if !hasSlot {
-		return waitOneStep(stepCost) // unclaimed hour: spare capacity, spent standing still
+		return g.getIdleAction(actor, person, stepCost) // unclaimed hour: see idle.go
 	}
+	delete(g.idleDrift, person.InternalName) // back on the clock
 
 	if g.hasArrivedAt(actor, slot.At) {
 		if intruder, watched := g.privateActionIsWatched(actor, slot); watched {

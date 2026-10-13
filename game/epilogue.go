@@ -98,7 +98,7 @@ func (g *GameInstance) townSlide() EpilogueSlide {
 	lines := []string{
 		fmt.Sprintf("The vampire %s, on day %d.", g.endingDescription(), clock.Day()+1),
 		"",
-		fmt.Sprintf("Of six: %d still living, %d vanished, %d found dead.", alive, absent, confirmed),
+		fmt.Sprintf("Of %d: %d still living, %d vanished, %d found dead.", len(g.townspeople), alive, absent, confirmed),
 	}
 	if withdrawn > 0 {
 		lines = append(lines, fmt.Sprintf("%d had stopped going out.", withdrawn))

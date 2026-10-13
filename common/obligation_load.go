@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 	"rpg/geometry"
-	"rpg/recfile"
+	recfile "github.com/memmaker/rec-files"
 	"strings"
 )
 

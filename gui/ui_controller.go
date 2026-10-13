@@ -1153,7 +1153,7 @@ func (u *UIController) showHelpText() {
 		"'l' to show the last lines of the message log.",
 		"'c' to show your stats.",
 		"'m' and 'n' to zoom the map.",
-		"'esc' to open the menu.",
+		"'esc' to open the menu, 'F2' for the debug menu.",
 		"",
 		"Time passes on its own. The townspeople keep their own hours",
 		"whether or not you are watching.",

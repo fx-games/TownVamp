@@ -2,7 +2,7 @@
 
 Glossary for the town simulation. Terms only — no implementation detail.
 
-The proof of concept town holds six Townspeople, each carrying one to three Obligations.
+The town holds nine Townspeople, each carrying one to three Obligations.
 Every Obligation is authored twice over: what it looks like being performed, and what
 its absence looks like.
 
@@ -62,8 +62,10 @@ Townsperson's Obligations are offered for Reassignment.
 reacts to anything, and publicly legible — a glance at the street shows it.
 
 The hours a Routine leaves free are that Townsperson's **spare capacity**, and capacity
-is the only thing limiting Reassignment: a taker who has no free hours cannot take the
-Obligation, and it goes Unmet. So a Townsperson who sleeps long and eats slowly is
+is the only thing limiting Reassignment: a taker who is not free during the Obligation's
+own hours cannot take it, and it goes Unmet. Spare hours elsewhere in the day are no
+help — which is why Routines are deliberately staggered, so that the people who could
+cover for each other are not all busy at the same time. So a Townsperson who sleeps long and eats slowly is
 fragile, and a Townsperson with a lean Routine is the town's shock absorber. Killing the
 shock absorber is what makes everything else fall apart two days later — which is the
 deepest thing observation can teach the player.
@@ -162,7 +164,7 @@ These are tuning, not design. They want playtesting rather than reasoning, and e
 should stay adjustable without a rebuild.
 
 - The rate Blood drains, and how much one Townsperson restores. Together these set the
-  length of a run and how many of the six die in it.
+  length of a run and how many of the nine die in it.
 - What an AUT is worth in seconds. This sets walking speed, and walking speed decides
   whether a Schedule is physically achievable in the hours allowed.
 - How much time a Routine leaves free, which decides how many voided Obligations the

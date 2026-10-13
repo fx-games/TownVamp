@@ -101,6 +101,10 @@ func (u *UIController) handleKeyboardInput() {
 		u.showHelpText()
 		return
 	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyF2) {
+		u.OpenMenu(u.context.DebugActions().Menu())
+		return
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
 		u.Cancel()
 		return

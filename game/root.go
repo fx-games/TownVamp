@@ -82,9 +82,11 @@ type GameInstance struct {
 	ending          RunEnding
 	warnedAboutDawn bool
 	isBurning       bool
+	daywalker       bool
 	zones           []*TownZone
 	hunter          *common.Actor
 	privacyRefuge   map[string]geometry.Point
+	idleDrift       map[string]*idleDrift
 
 	logHook     func(string)
 	logBuffer   []string
@@ -270,6 +272,7 @@ func (g *GameInstance) ResetGame(playerStartDefinition defs.LoadoutDefinition) {
 	g.townspeople = nil
 	g.bodies = make(map[string]geometry.Point)
 	g.privacyRefuge = make(map[string]geometry.Point)
+	g.idleDrift = make(map[string]*idleDrift)
 	g.hunter = nil
 	g.ending = RunOngoing
 	g.state.SetRandomSource(g.randomSource)
@@ -738,5 +741,6 @@ func (g *GameInstance) GetLog() []string {
 func (g *GameInstance) getDebugActions() common.DebugActions {
 	return common.DebugActions{
 		KillLevel: g.killLevel,
+		Menu:      g.debugMenu,
 	}
 }

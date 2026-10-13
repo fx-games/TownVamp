@@ -34,8 +34,9 @@ A Schedule is derived — a Townsperson's authored Routine, with their Obligatio
 resolved into the hours the Routine leaves free. When a Townsperson has been Absent for
 a day their Obligations are offered for Reassignment: first to whoever the Obligation
 pointed at, then to anyone whose Role suits it, and otherwise the Obligation goes Unmet.
-A taker needs free hours; there is no other cost and no displacement of their existing
-duties.
+A taker needs the Obligation's own hours free — not merely free hours somewhere in the
+day, which is a different and much weaker thing; there is no other cost and no
+displacement of their existing duties.
 
 ## Consequences
 

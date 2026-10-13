@@ -34,6 +34,8 @@ github.com/lucasb-eyer/go-colorful v1.2.0/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i
 github.com/mattn/go-runewidth v0.0.7/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
 github.com/mattn/go-runewidth v0.0.15 h1:UNAjwbU9l54TA3KzvqLGxwWjHmMgBUVhBiTjelZgg3U=
 github.com/mattn/go-runewidth v0.0.15/go.mod h1:Jdepj2loyihRzMpdS35Xk/zdY8IAYHsh153qUoGf23w=
+github.com/memmaker/rec-files v1.0.0 h1:9qhXbMeheQl2jik14ETg4Eh/o9cP5MWw840J1XqLPgY=
+github.com/memmaker/rec-files v1.0.0/go.mod h1:qYwB10uYk8tAlN8FU/Qf6vveZyxOmtLAfg5uAp1/rc4=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rivo/tview v0.0.0-20240204151237-861aa94d61c8 h1:aW0ILZ0lkphO/2mUWocSfP1iebWtSFcxL8BiSNR+/8g=
 github.com/rivo/tview v0.0.0-20240204151237-861aa94d61c8/go.mod h1:sGSvhfWFNS7FpYxS8K+e22OTOI3UsB5rDs0nRtoZkpA=

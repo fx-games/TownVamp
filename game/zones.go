@@ -7,7 +7,7 @@ import (
 	"rpg/files"
 	"rpg/geometry"
 	"rpg/gridmap"
-	"rpg/recfile"
+	recfile "github.com/memmaker/rec-files"
 	"slices"
 	"strconv"
 	"strings"
@@ -137,7 +137,7 @@ func (g *GameInstance) checkForTrespass() {
 		if person == nil || person.IsAbsent() {
 			continue
 		}
-		if !g.canSee(actor, player.MapPosition()) {
+		if !g.canSeePlayer(actor) {
 			continue
 		}
 		g.witnessTrespass(actor, person, zone)

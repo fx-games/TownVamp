@@ -2,7 +2,7 @@ package defs
 
 import (
 	"math/rand"
-	"rpg/recfile"
+	recfile "github.com/memmaker/rec-files"
 	"rpg/stats"
 	"rpg/util"
 )

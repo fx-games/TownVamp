@@ -103,11 +103,11 @@ func (g *GameInstance) getHunterAction(actor *common.Actor) (float64, func()) {
 	}
 
 	currentMap := g.state.GetMap()
-	if currentMap.MoveDistance(actor.MapPosition(), player.MapPosition()) <= 1 {
+	if !g.daywalker && currentMap.MoveDistance(actor.MapPosition(), player.MapPosition()) <= 1 {
 		return stepCost, func() { g.endRun(RunCaught) }
 	}
 
-	if g.canSee(actor, player.MapPosition()) {
+	if g.canSeePlayer(actor) {
 		next, found := g.nextStepTowards(actor, player.MapPosition())
 		if found {
 			return stepCost, func() {

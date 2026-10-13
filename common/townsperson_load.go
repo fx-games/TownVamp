@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"io"
 	"rpg/geometry"
-	"rpg/recfile"
+	"strconv"
+	"strings"
+
+	recfile "github.com/memmaker/rec-files"
 )
 
 // ReadTownspeople loads Townspeople from the plaintext record format the rest of
@@ -27,6 +30,13 @@ func ReadTownspeople(file io.Reader, namedLocation func(string) (geometry.Point,
 				person.Role = role
 			case "identity":
 				person.Identity = field.Value
+			case "icon":
+				icon, err := strconv.Atoi(strings.TrimSpace(field.Value))
+				if err != nil {
+					logErr(fmt.Sprintf("townsperson %s: icon %q is not a tile id", person.InternalName, field.Value))
+					continue
+				}
+				person.Icon = int32(icon)
 			case "routine":
 				slot, err := ParseRoutineSlot(field.Value, namedLocation)
 				if err != nil {

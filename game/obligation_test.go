@@ -86,11 +86,24 @@ func TestSchedulesAreDerivedNotAuthored(t *testing.T) {
 		t.Fatal("nobody has spare capacity to take on a duty")
 	}
 
+	// An Obligation resolves into the hours the Routine leaves free, so it has to
+	// be given at an hour this particular person actually has spare.
+	hour, found := -1, false
+	for candidate := 0; candidate < 24; candidate++ {
+		if _, busy := subject.Routine.SlotAt(float64(candidate * 3600)); !busy {
+			hour, found = candidate, true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("%s has spare capacity but no free hour to spend it in", subject.InternalName)
+	}
+
 	before := len(subject.Schedule())
 	subject.TakeObligation(&common.Obligation{
 		ID:          "test_duty",
-		StartSecond: 22 * 3600,
-		EndSecond:   23 * 3600,
+		StartSecond: hour * 3600,
+		EndSecond:   hour*3600 + 1800,
 		At:          geometry.Point{X: 17, Y: 11},
 		Performed:   "does the thing",
 		Absent:      "the thing goes undone",
@@ -101,8 +114,33 @@ func TestSchedulesAreDerivedNotAuthored(t *testing.T) {
 	if after != before+1 {
 		t.Errorf("taking an Obligation should add an entry to the day: %d -> %d", before, after)
 	}
-	if entry, ok := subject.Schedule().EntryAt(22*3600 + 60); !ok || !entry.IsObligation() {
-		t.Error("the new duty does not appear in the day at the hour it was given")
+	if entry, ok := subject.Schedule().EntryAt(float64(hour*3600 + 60)); !ok || !entry.IsObligation() {
+		t.Errorf("the new duty does not appear in the day at %02d:00, where it was given", hour)
+	}
+}
+
+func TestEveryDutyInTheTownIsPerformedInADay(t *testing.T) {
+	// The whole clockwork in one assertion: left alone for a Day, every duty
+	// anybody owes is actually carried out. A window nobody can walk to in time,
+	// a place that cannot be reached, a day authored so full that a duty never
+	// gets its hour — all of them surface here as a duty nobody performed, and
+	// none of them surface anywhere else until a player notices the town is
+	// quietly not doing something.
+	game := newTestGame(t)
+	clock := game.GetWorldState().GetClock()
+
+	for clock.Hour() != 1 { // start just inside a Day, so nothing is cleared mid-run
+		game.Advance(1.0)
+	}
+	advanceRealSeconds(game, 22*60)
+
+	for _, actor := range townspeople(game) {
+		person := actor.GetTownsperson()
+		for _, obligation := range person.Obligations {
+			if !game.announcedToday[person.InternalName+":"+obligation.ID] {
+				t.Errorf("%s never performed %s", person.InternalName, obligation.ID)
+			}
+		}
 	}
 }
 

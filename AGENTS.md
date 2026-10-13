@@ -106,14 +106,34 @@ names, and `spawn` is both the player's start and the vampire's lair
 ([game/vampire.go:136](game/vampire.go:136)). Prefer names — coordinates rot the moment the layout
 moves.
 
-Currently: `spawn`, `town_square`, `main_road`, `inn`, `inn_cellar`, `innkeeper_bedroom`,
-`blacksmith`, `smith_storage`, `blacksmith_bedroom`, `carpenter_workshop`, `carpenter_interior`,
-`carpenter_bedroom`, `church`, `priest_study`, `priest_bedroom`, `cemetery`, `childs_grave`,
-`farmhouse`, `farmer_bedroom`, `barn`, `vegetable_field`, `grain_field`, `lunch_tree`, `mill`,
-`mill_interior`, `miller_bedroom`, `river`, `bridge`, `quiet_riverbank`.
+**Do not add or move them by hand.** They are written from the `WAYPOINTS` dict in
+[scripts/build_town.py](scripts/build_town.py), which also paints the terrain — a place and the
+ground under it are one decision, and the script asserts every name in the dict can be walked to
+from the lair. Add the name there, re-run the script, and the entity appears; an existing name
+keeps its `iid` across runs. Entities on the `Entities` layer (NPC, Door, Sign) are untouched by it
+and are still authored through the MCP.
+
+Currently 37, including `spawn`, `town_square`, `main_road`, `market_stall`, `inn`, `inn_cellar`,
+`innkeeper_bedroom`, `blacksmith`, `smith_storage`, `blacksmith_bedroom`, `carpenter_workshop`,
+`carpenter_interior`, `carpenter_bedroom`, `church`, `priest_study`, `priest_bedroom`, `cemetery`,
+`childs_grave`, `farmhouse`, `farmer_bedroom`, `barn`, `hayloft`, `pasture`, `vegetable_field`,
+`grain_field`, `lunch_tree`, `mill`, `mill_interior`, `miller_bedroom`, `trader_house`,
+`trader_bedroom`, `fisher_cottage`, `fisher_bedroom`, `fishing_spot`, `river`, `bridge`,
+`quiet_riverbank`.
 
 Zone rectangles in `zones.rec` are still raw `x,y,w,h` against this layout, so moving a building
 means moving its zone too.
+
+### Adding a Townsperson
+
+No map edit required. Write a record in `files/assets/data/townspeople.rec` with an `icon:` (a tile
+id — see the table above) and a Routine, and they are spawned at whatever their Schedule says they
+should be doing when the run starts. Someone the map *does* place as an NPC entity is matched to
+their record by `internal_name` and keeps their map sprite. Give them duties in `obligations.rec`
+and a private Zone in `zones.rec` if they have somewhere of their own.
+
+`go test ./game/...` is the check: it asserts every authored person reaches the map, every Schedule
+is walkable in the hours it allows, and every duty in the town is actually performed over a Day.
 
 ### Gotchas
 

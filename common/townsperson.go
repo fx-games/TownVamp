@@ -103,6 +103,11 @@ type Townsperson struct {
 	// the fixed order of the cast, so it never changes during a game.
 	Number int
 
+	// Icon is the tile this person is drawn with, for anyone the map does not
+	// already place. Authored so that adding an inhabitant stays a matter of
+	// writing a record rather than editing the map.
+	Icon int32
+
 	// Obligations are what this Townsperson currently owes. They change hands
 	// when someone goes Absent, which is why the Schedule is derived from them
 	// rather than authored alongside the Routine.
@@ -130,7 +135,7 @@ func (t *Townsperson) Withdraw() {
 	}
 	t.HasWithdrawn = true
 
-	home, found := t.homeLocation()
+	home, found := t.HomeLocation()
 	if !found {
 		return
 	}
@@ -162,8 +167,8 @@ func (t *Townsperson) Withdraw() {
 	t.schedule = nil
 }
 
-// homeLocation is wherever this Townsperson sleeps.
-func (t *Townsperson) homeLocation() (geometry.Point, bool) {
+// HomeLocation is wherever this Townsperson sleeps.
+func (t *Townsperson) HomeLocation() (geometry.Point, bool) {
 	for _, slot := range t.Routine {
 		if slot.Activity == "sleep" {
 			return slot.At, true
@@ -241,6 +246,42 @@ func (t *Townsperson) FreeSecondsPerDay() int {
 		return 0
 	}
 	return free
+}
+
+// CanFitObligation reports whether the hours this Obligation would occupy are
+// actually unclaimed. FreeSecondsPerDay is not the same question: someone with
+// six idle hours still cannot be in two places at ten in the morning.
+//
+// Reassignment needs this one. DeriveSchedule drops an Obligation whose window
+// runs into a Routine slot, so a duty handed over on aggregate capacity alone is
+// owed by somebody and done by nobody.
+func (t *Townsperson) CanFitObligation(obligation *Obligation) bool {
+	// Minute by minute, using the same predicates the Schedule uses, because they
+	// already agree with each other about midnight.
+	for offset := 0; offset < obligation.DurationSeconds(); offset += 60 {
+		at := float64((obligation.StartSecond + offset) % SecondsPerDay)
+		if _, claimed := t.Routine.SlotAt(at); claimed {
+			return false
+		}
+		for _, existing := range t.Obligations {
+			if existing != obligation && existing.Covers(at) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// ReleaseObligation hands back one duty. Reassignment needs it to undo a
+// handover that turned out not to fit, rather than leaving the Obligation owed
+// by someone whose day has no room for it.
+func (t *Townsperson) ReleaseObligation(obligation *Obligation) {
+	for i, held := range t.Obligations {
+		if held == obligation {
+			t.Obligations = append(t.Obligations[:i], t.Obligations[i+1:]...)
+			return
+		}
+	}
 }
 
 func (t *Townsperson) String() string {

@@ -2,7 +2,7 @@ package defs
 
 import (
 	"io"
-	"rpg/recfile"
+	recfile "github.com/memmaker/rec-files"
 	"strings"
 )
 

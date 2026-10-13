@@ -16,11 +16,17 @@ func townspeople(game *GameInstance) []*common.Actor {
 	return people
 }
 
-func TestTownHasSixTownspeople(t *testing.T) {
+func TestEveryAuthoredTownspersonIsOnTheMap(t *testing.T) {
+	// Counting the cast is not the point; nobody authored being left off the map
+	// is. Someone who loads but never gets an actor owes Obligations that are
+	// never performed and never reported missing either.
 	game := newTestGame(t)
 	people := townspeople(game)
-	if len(people) != 6 {
-		t.Fatalf("expected 6 Townspeople, got %d", len(people))
+	if len(people) != len(game.townspeople) {
+		t.Fatalf("%d Townspeople authored, %d standing in the town", len(game.townspeople), len(people))
+	}
+	if len(people) < 6 {
+		t.Fatalf("a town this small has nothing to lose: %d Townspeople", len(people))
 	}
 }
 
@@ -38,6 +44,55 @@ func TestAtLeastFourRolesAreRepresented(t *testing.T) {
 	for role := range roles {
 		if _, err := common.RoleFromString(string(role)); err != nil {
 			t.Errorf("%v is not one of the five Roles", role)
+		}
+	}
+}
+
+func TestNoSingleTownspersonIsTheTownsOnlySourceOfFood(t *testing.T) {
+	// Food is the one thing the town cannot do without, and the only reason an
+	// early death is survivable is that more than one person brings it in. With
+	// a single producer the first killing would not degrade the town, it would
+	// end it — and the player would learn nothing from the difference.
+	game := newTestGame(t)
+
+	producers := map[string]bool{}
+	for _, person := range game.townspeople {
+		if person.Role != common.RoleFarmer {
+			continue
+		}
+		for _, obligation := range person.Obligations {
+			if !obligation.OwedToTheTown() {
+				producers[person.InternalName] = true
+			}
+		}
+	}
+	if len(producers) < 3 {
+		t.Errorf("only %d people bring food to anybody: %v", len(producers), producers)
+	}
+}
+
+func TestEveryRoleHeldByMoreThanOnePersonHasSlackInIt(t *testing.T) {
+	// Reassignment falls back to Role, and a candidate needs free hours and
+	// nothing else. A Role whose every holder is booked solid cannot absorb
+	// anything, so authoring one is how the town silently loses the ability to
+	// repair itself.
+	game := newTestGame(t)
+
+	holders := map[common.Role][]*common.Townsperson{}
+	for _, person := range game.townspeople {
+		holders[person.Role] = append(holders[person.Role], person)
+	}
+
+	for role, people := range holders {
+		if len(people) < 2 {
+			continue // a Role with one holder has nobody to pass work to anyway
+		}
+		spare := 0
+		for _, person := range people {
+			spare += person.FreeSecondsPerDay()
+		}
+		if spare == 0 {
+			t.Errorf("every %s is booked solid; nothing of theirs can ever be taken on", role)
 		}
 	}
 }
@@ -75,10 +130,15 @@ func TestRoutineDestinationsAreReachable(t *testing.T) {
 func TestRoutineDensityVaries(t *testing.T) {
 	// One Townsperson must be the town's shock absorber and one must be fragile,
 	// or Reassignment has nothing interesting to discover later.
+	//
+	// Measured against the Routine *and* the Obligations, because that is the
+	// capacity Reassignment consults. Someone with a lean Routine who already
+	// owes four duties is not slack the town can draw on, and counting them as
+	// such is how a town that looks resilient turns out not to be.
 	game := newTestGame(t)
 	leanest, busiest := -1, common.SecondsPerDay+1
 	for _, actor := range townspeople(game) {
-		free := actor.GetTownsperson().Routine.FreeSecondsPerDay()
+		free := actor.GetTownsperson().FreeSecondsPerDay()
 		if free > leanest {
 			leanest = free
 		}

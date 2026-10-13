@@ -1,27 +1,34 @@
 %rec: default
-#FIELDS: internal_name role identity routine
+#FIELDS: internal_name role identity icon routine
 #
 # One record per Townsperson. Everything here is data — no behaviour is
-# hard-coded anywhere.
+# hard-coded anywhere, and nobody needs an entry on the map to exist: a
+# Townsperson the map does not already contain is spawned wherever their
+# Schedule says they should be when the run begins.
 #
 #   role      one of: farmer smith builder trader authority
 #   identity  who they are beneath the Role. Never shown to the player; it is
 #             what their Private Actions are eventually written against.
+#   icon      tile id in files/assets/classic_roguelike.png (row * 28 + col).
+#             Optional, and only needed for people the map does not place.
 #   routine   HH:MM-HH:MM activity place, where place is "x,y" or the name of a
 #             location on the map. The Routine is the fixed part of the day and
 #             reacts to nothing. Hours it leaves free are spare capacity, which
 #             is what limits Reassignment later — so vary it deliberately.
 #
-# The cast and their days come from docs/specs/town-design-handover.md. Places
-# are named rather than numbered: the names are Location entities on the Meta
-# layer of files/assets/maps.ldtk.
+# The original six and their days come from docs/specs/town-design-handover.md.
+# Places are named rather than numbered: the names come from WAYPOINTS in
+# scripts/build_town.py, which writes them onto the map's Meta layer.
+#
+# The town's trades, and who feeds whom, are in obligations.rec. Read the two
+# together: this file is where people are, that one is what they owe.
 
 internal_name: elias
 role: farmer
 identity: has a daughter in the cemetery and has told no one how often he goes
 routine: 22:00-05:00 sleep farmer_bedroom
 routine: 05:00-06:00 meal farmhouse
-routine: 06:00-10:00 harvest vegetable_field
+routine: 07:00-10:00 harvest vegetable_field
 routine: 12:00-13:00 lunch lunch_tree
 routine: 13:00-16:00 harvest grain_field
 routine: 19:00-20:00 meal farmhouse
@@ -33,7 +40,7 @@ identity: wakes on the riverbank with no memory of walking there
 routine: 23:00-02:00 sleep miller_bedroom
 routine: 03:00-06:00 sleep miller_bedroom
 routine: 06:00-07:00 meal mill_interior
-routine: 07:00-12:00 grind mill
+routine: 07:00-10:00 grind mill
 routine: 12:00-13:00 lunch river
 routine: 13:00-17:00 grind mill
 routine: 17:00-18:00 waterwheel river
@@ -44,8 +51,9 @@ role: trader
 identity: has been thinning the ale since the bad winter and cannot stop now
 routine: 23:00-05:00 sleep innkeeper_bedroom
 routine: 05:00-07:00 kitchen inn
-routine: 07:00-12:00 serve inn
-routine: 13:00-19:00 serve inn
+routine: 07:00-11:00 serve inn
+routine: 13:00-17:00 serve inn
+routine: 18:00-19:00 serve inn
 routine: 20:00-22:00 clean inn
 
 internal_name: otto
@@ -75,3 +83,48 @@ routine: 06:00-07:00 meal priest_study
 routine: 09:00-11:00 duties church
 routine: 13:00-17:00 visits town_square
 routine: 19:00-20:00 prayer church
+
+# Jorin keeps the animals: the milk, the eggs and the muscle the fields need
+# that Elias no longer has. He is up before anyone and in the fields with the
+# farmer every afternoon, which makes him the one person whose day touches both
+# ends of the town's food.
+internal_name: jorin
+role: farmer
+identity: came to the farm as a boy after a winter he does not talk about
+icon: 342
+routine: 21:00-04:00 sleep hayloft
+routine: 04:00-05:30 animals barn
+routine: 10:00-12:00 grazing pasture
+routine: 12:00-13:00 lunch lunch_tree
+routine: 13:00-16:00 harvest grain_field
+routine: 17:30-18:30 herd pasture
+routine: 19:00-20:00 animals barn
+routine: 20:00-21:00 meal farmhouse
+
+# Bram works the river, which is the town's one food supply that owes nothing
+# to the weather on the fields. He is also the furthest from everybody — out of
+# sight for most of the day, and missed slowly.
+internal_name: bram
+role: farmer
+identity: keeps a second line in the water that he never baits
+icon: 457
+routine: 23:00-05:00 sleep fisher_bedroom
+routine: 05:00-08:00 fishing fishing_spot
+routine: 12:00-13:00 meal inn
+routine: 14:00-18:00 fishing fishing_spot
+routine: 19:00-20:00 meal fisher_cottage
+
+# Hilde sells. Nothing she handles is hers: it comes in off the farm, the river
+# and the mill in the morning and goes out across her counter all day. Kill the
+# people who produce and her stall is bare; kill her and the producers have
+# nowhere to put what they grow.
+internal_name: hilde
+role: trader
+identity: counts the takings twice and writes the smaller number down
+icon: 314
+routine: 22:00-05:30 sleep trader_bedroom
+routine: 06:00-07:00 meal trader_house
+routine: 08:00-12:00 stall market_stall
+routine: 13:00-17:00 stall market_stall
+routine: 19:00-20:00 meal inn
+routine: 20:00-22:00 evening inn

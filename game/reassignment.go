@@ -34,9 +34,15 @@ func (g *GameInstance) reassignVoidedObligations() {
 		for _, obligation := range voided {
 			if taker := g.findTakerFor(obligation); taker != nil {
 				taker.TakeObligation(obligation)
+				if problems := taker.RecomputeSchedule(); len(problems) == 0 {
+					g.PlayerMessage(fmt.Sprintf("%s takes on %s.", displayName(taker.InternalName), obligation.ID))
+					continue
+				}
+				// Their day could not hold it after all. Hand it back: the town
+				// reporting a loss is worth more than the town announcing a repair
+				// that never happens, which is what a dropped Schedule entry is.
+				taker.ReleaseObligation(obligation)
 				taker.RecomputeSchedule()
-				g.PlayerMessage(fmt.Sprintf("%s takes on %s.", displayName(taker.InternalName), obligation.ID))
-				continue
 			}
 			g.unmetObligations = append(g.unmetObligations, obligation)
 			g.PlayerMessage(obligation.Absent + ".")
@@ -48,10 +54,8 @@ func (g *GameInstance) reassignVoidedObligations() {
 // fed can fetch her own bread — then anyone whose Role suits it. Capacity is the
 // only bar.
 func (g *GameInstance) findTakerFor(obligation *common.Obligation) *common.Townsperson {
-	needed := obligation.DurationSeconds()
-
 	if obligation.Towards != "" {
-		if pointedAt := g.townspersonByName(obligation.Towards); g.canTake(pointedAt, needed) {
+		if pointedAt := g.townspersonByName(obligation.Towards); g.canTake(pointedAt, obligation) {
 			return pointedAt
 		}
 	}
@@ -63,18 +67,23 @@ func (g *GameInstance) findTakerFor(obligation *common.Obligation) *common.Towns
 		if candidate.Role != obligation.SuitableRole {
 			continue
 		}
-		if g.canTake(candidate, needed) {
+		if g.canTake(candidate, obligation) {
 			return candidate
 		}
 	}
 	return nil
 }
 
-func (g *GameInstance) canTake(candidate *common.Townsperson, neededSeconds int) bool {
+// canTake asks only about capacity, never competence — but about the capacity
+// that matters, which is the Obligation's own hours rather than the day's total.
+func (g *GameInstance) canTake(candidate *common.Townsperson, obligation *common.Obligation) bool {
 	if candidate == nil || candidate.IsAbsent() {
 		return false
 	}
-	return candidate.FreeSecondsPerDay() >= neededSeconds
+	if candidate.FreeSecondsPerDay() < obligation.DurationSeconds() {
+		return false
+	}
+	return candidate.CanFitObligation(obligation)
 }
 
 // UnmetObligations is the ledger of what the town has permanently stopped doing.

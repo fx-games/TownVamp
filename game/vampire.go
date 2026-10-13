@@ -105,6 +105,10 @@ func (g *GameInstance) tickVampire(inGameSeconds float64) {
 	if g.ending != RunOngoing || g.blood == nil {
 		return
 	}
+	if g.daywalker {
+		g.noteBurning(false)
+		return
+	}
 
 	// Sunlight. Being caught outside the lair at dawn is the deadline that
 	// structures every night: how far it is safe to roam, and whether there is

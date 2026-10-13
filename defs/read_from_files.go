@@ -3,7 +3,7 @@ package defs
 import (
 	"fmt"
 	"io"
-	"rpg/recfile"
+	recfile "github.com/memmaker/rec-files"
 )
 
 func ReadItemDefinitions(file io.Reader, logErr func(errString string)) map[string]ItemDefinition {

@@ -28,6 +28,7 @@ name: The barn
 type: private
 rect: 9,13,8,7
 belongs_to: elias
+belongs_to: jorin
 
 name: The mill
 type: private
@@ -53,3 +54,13 @@ name: The priest's study
 type: private
 rect: 31,32,3,4
 belongs_to: aldren
+
+name: Hilde's house
+type: private
+rect: 42,14,6,6
+belongs_to: hilde
+
+name: Bram's cottage
+type: private
+rect: 56,28,6,6
+belongs_to: bram

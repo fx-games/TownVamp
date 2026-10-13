@@ -5,7 +5,7 @@ import (
     "io/fs"
     "os"
 	"rpg/geometry"
-	"rpg/recfile"
+	recfile "github.com/memmaker/rec-files"
 )
 
 type ItemNamingScheme string
@@ -143,7 +143,8 @@ func (c Configuration) ToRecord() recfile.Record {
 func (c Configuration) SaveToRecFile(recFilename string) {
 	file, err := os.Create(recFilename)
 	if err != nil {
-		panic(err)
+		println("could not save config:", err.Error()) // e.g. in the browser
+		return
 	}
 	defer file.Close()
 	recfile.Write(file, []recfile.Record{c.ToRecord()})

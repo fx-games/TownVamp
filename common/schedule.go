@@ -51,6 +51,28 @@ func (s Schedule) EntryAt(secondsSinceMidnight float64) (ScheduleEntry, bool) {
 	return fallback, foundFallback
 }
 
+// NextEntryAfter is what a Townsperson is due to do next, and how long they have
+// before they are due to be there. An unclaimed hour is only free in the sense
+// that nothing is authored into it — whatever is done with it has to leave
+// enough time to still make the next appointment.
+func (s Schedule) NextEntryAfter(secondsSinceMidnight float64) (ScheduleEntry, float64, bool) {
+	var next ScheduleEntry
+	soonest := float64(SecondsPerDay + 1)
+	for _, entry := range s {
+		until := float64(entry.StartSecond) - secondsSinceMidnight
+		if until <= 0 {
+			until += float64(SecondsPerDay) // tomorrow's turn at the same hour
+		}
+		if until < soonest {
+			next, soonest = entry, until
+		}
+	}
+	if soonest > float64(SecondsPerDay) {
+		return ScheduleEntry{}, 0, false
+	}
+	return next, soonest, true
+}
+
 // DeriveSchedule resolves Obligations into the hours a Routine leaves free.
 // An Obligation that will not fit is reported rather than silently dropped —
 // an unperformable duty is an authoring mistake, not a simulation outcome.

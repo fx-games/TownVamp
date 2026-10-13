@@ -29,7 +29,7 @@ player's to anticipate and are the player's to live with.
 
 A real-time town simulation built on the existing engine, with the RPG systems removed.
 
-Six Townspeople live in a town. Each has a Routine — the fixed hours of their day, sleep
+Nine Townspeople live in a town. Each has a Routine — the fixed hours of their day, sleep
 and meals and home — and one to three Obligations, each a duty owed either to another
 Townsperson or to the town. Their Schedule is derived: the Routine, with the Obligations
 resolved into whatever hours the Routine leaves free. Time advances on its own whether
@@ -184,7 +184,7 @@ Epilogue shows one slide per Townsperson and one for the town.
 50. As a player, I want an Epilogue showing what became of each Townsperson, so that I
     can see the shape of what I did.
 51. As a player, I want a summary of the town as a whole, so that I can see the aggregate
-    of six individual outcomes.
+    of nine individual outcomes.
 52. As a player, I want the Epilogue to describe consequences rather than score me, so
     that the game never tells me whether I chose correctly.
 
@@ -260,13 +260,17 @@ metal tools; Builder, covering carpenter, mason and wheelwright; Trader, coverin
 merchant, innkeeper and transport; and Authority, covering lord, priest, guard and judge.
 Because Role is what Reassignment falls back to once relationship has been tried, the
 closed set doubles as the compatibility rule — an Obligation can pass to a Townsperson of
-a fitting Role and to no one else. Six Townspeople across five Roles means one Role is
-held by two of them, and at least four of the five must be represented so the fallback
-has somewhere to go.
+a fitting Role and to no one else. At least four of the five must be represented so the
+fallback has somewhere to go, and the Roles the town cannot do without want more than one
+holder — a Role with a single holder loses its duties permanently the moment that person
+does.
 
-The proof-of-concept town is built in the existing town map, reusing its named
-inhabitants as Townspeople with their vendor and quest identities dropped, and adding
-enough to reach six.
+The town is built in the existing town map, reusing its named inhabitants as Townspeople
+with their vendor and quest identities dropped. It currently holds nine: four Farmers who
+between them bring in vegetables, grain, milk, eggs, flour and fish; two Traders, one
+cooking at the inn and one selling at a market stall; and one each of Smith, Builder and
+Authority. Food has four producers and two destinations on purpose — it is the one thing
+the town cannot survive losing, so it is the one thing with redundancy in it.
 
 The Routine is authored and fixed: sleep, meals, home. It never reacts to anything, with
 the single exception of Withdrawal. The Schedule is derived — the Routine, with
@@ -290,10 +294,16 @@ looks like performed, and what its absence looks like on screen.
 
 A Townsperson who has been Absent for one full Day has their Obligations offered for
 Reassignment. Candidates are tried in order: whoever the Obligation pointed at, then
-anyone whose Role suits it. A candidate must have free hours in their Routine; that is
-the only requirement and the only cost. There is no displacement of a taker's existing
-duties and no quality degradation. If no candidate has capacity, the Obligation goes
-Unmet permanently.
+anyone whose Role suits it. A candidate must be free during the Obligation's own hours;
+that is the only requirement and the only cost. There is no displacement of a taker's
+existing duties and no quality degradation. If no candidate has capacity, the Obligation
+goes Unmet permanently.
+
+Free *during those hours*, not merely free somewhere in the day: a candidate with six
+idle hours still cannot be in two places at ten in the morning. Counting capacity in
+aggregate makes a town look resilient and leaves it unable to cover anything, because a
+duty handed to someone whose Routine already claims its window is dropped from their day
+and then owed by one person and done by nobody.
 
 The town's resilience therefore emerges from Routine density rather than from a tuned
 difficulty curve, and the collapse accelerates on its own as spare hours are consumed.
@@ -473,9 +483,13 @@ full; a taker without free hours does not take it at all.
 **Continuous runtime speed controls.** The Time Multiplier is configuration, set for a
 session.
 
-**Growing the town.** Six Townspeople. The authoring cost of the second face of every
-Obligation, not engine capacity, is what bounds this, and the per-Townsperson Epilogue
-slide approach stops scaling somewhere well short of thirty.
+**Growing the town much further.** Nine Townspeople. The town went from six to nine to
+give the economy enough producers that food has redundancy in it and the market has
+somebody to run it; the three who were added carry Obligations but no authored secret
+yet, which is the one thing about them still owed. What bounds the town from here is the
+authoring cost of the second face of every Obligation, not engine capacity, and the
+per-Townsperson Epilogue slide approach still stops scaling somewhere well short of
+thirty.
 
 **Inventory, items, equipment and vending as player-facing features.** The code stays and
 compiles; the interface does not exist.

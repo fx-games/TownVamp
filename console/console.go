@@ -1,6 +1,5 @@
 package console
 
-import "C"
 import (
 	"fmt"
 	"github.com/gdamore/tcell/v2"
@@ -387,6 +386,8 @@ func (c *Console) HandleInput() (terminationCode int) {
 				c.terminationCode = 1
 			} else if typedRune == 'o' {
 				actions.StartAutoExplore()
+			} else if typedRune == 'D' {
+				c.OpenMenu(c.context.DebugActions().Menu())
 			}
 		}
 	}
